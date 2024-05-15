@@ -1,0 +1,1290 @@
+---
+title: "Ch2Blodgett_Environmental"
+output: html_document
+date: "2024-03-02"
+---
+# Load Packages
+```{r}
+library(tidyverse)
+library(dplyr)
+```
+
+# Temperature Data
+# U1A
+```{r}
+probe_colors <- c("#ffba00","#df4200","#aa0048","#800080")
+probe_order <- c('Depth1', 'Depth2', 'Depth4', 'Depth6')
+temp_U1A=read_delim("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/Blodgett/Datalogger Temps/U1A.txt", delim = "\t", col_names = TRUE)
+temp_U1A <- temp_U1A[-c(1:2), ]
+temp_U1A <- temp_U1A[, -1]
+temp_U1A <- temp_U1A %>%
+  dplyr::rename("Depth1" = "Value...4", "Depth2" = "Value...6", "Depth4" = "Value...8", "Depth6" = "Value...10")
+temp_U1A <- temp_U1A[, -c(4,6,8,10)]
+temp_U1A$DateTime <- as.POSIXct(paste(temp_U1A$Date, temp_U1A$Time), format = "%m/%d/%Y %H:%M:%S")
+temp_U1A_long <- pivot_longer(temp_U1A, cols = starts_with("Depth"), names_to = "Probe_ID", values_to = "Temperature")
+specific_intervals <- temp_U1A_long %>%
+  filter(minute(DateTime) == 0)
+U1_Temperature <- ggplot(temp_U1A_long, aes(x = DateTime, y = Temperature, color = Probe_ID))+
+  #geom_point(size = 0.25)+
+  geom_line(size = 1.25)+
+  scale_color_manual(values=probe_colors, limits=probe_order)+
+  theme_bw()+
+  labs(x="One Minute Intervals", 
+       y ="Temperature (ºC)",
+       title = "U1 Temperature Profile")
+U1_Temperature <- ggsave("U1_Temperature.pdf", width = 200, height = 50, units = "mm", dpi = 500)
+```
+# U2A
+```{r}
+temp_U2A=read_delim("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/Blodgett/Datalogger Temps/U2A.txt", delim = "\t", col_names = TRUE)
+#temp_U2A <- temp_U2A[-c(1:2), ]
+temp_U2A <- temp_U2A[, -1]
+temp_U2A <- temp_U2A %>%
+  dplyr::rename("Depth1" = "Value...4", "Depth2" = "Value...6", "Depth4" = "Value...8", "Depth6" = "Value...10")
+temp_U2A <- temp_U2A[, -c(4,6,8,10)]
+temp_U2A$DateTime <- as.POSIXct(paste(temp_U2A$Date, temp_U2A$Time), format = "%m/%d/%Y %H:%M:%S")
+temp_U2A_long <- pivot_longer(temp_U2A, cols = starts_with("Depth"), names_to = "Probe_ID", values_to = "Temperature")
+specific_intervals <- temp_U2A_long %>%
+  filter(minute(DateTime) == 0)
+U2_Temperature <- ggplot(temp_U2A_long, aes(x = DateTime, y = Temperature, color = Probe_ID))+
+  #geom_point(size = 0.25)+
+  geom_line(size = 1.25)+
+  scale_color_manual(values=probe_colors, limits=probe_order)+
+  theme_bw()+
+  labs(x="One Minute Intervals", 
+       y ="Temperature (ºC)",
+       title = "U2 Temperature Profile")
+U2_Temperature <- ggsave("U2_Temperature.pdf", width = 200, height = 50, units = "mm", dpi = 500)
+```
+# B1A + Time above 60ºC
+```{r}
+temp_B1A=read_delim("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/Blodgett/Datalogger Temps/B1A.txt", delim = "\t", col_names = TRUE)
+temp_B1A <- temp_B1A[-c(1:2), ]
+temp_B1A <- temp_B1A[, -1]
+temp_B1A <- temp_B1A %>%
+  dplyr::rename("Depth1" = "Value...4", "Depth2" = "Value...6", "Depth4" = "Value...8", "Depth6" = "Value...10")
+temp_B1A <- temp_B1A[, -c(4,6,8,10)]
+temp_B1A$DateTime <- as.POSIXct(paste(temp_B1A$Date, temp_B1A$Time), format = "%m/%d/%Y %H:%M:%S")
+temp_B1A_long <- pivot_longer(temp_B1A, cols = starts_with("Depth"), names_to = "Probe_ID", values_to = "Temperature")
+specific_intervals <- temp_B1A_long %>%
+  filter(minute(DateTime) == 0)
+B1A_Temperature <- ggplot(temp_B1A_long, aes(x = DateTime, y = Temperature, color = Probe_ID))+
+  #geom_point(size = 0.25)+
+  geom_line(size = 1.25)+
+  scale_color_manual(values=probe_colors, limits=probe_order)+
+  theme_bw()+
+  labs(x="One Minute Intervals", 
+       y ="Temperature (ºC)",
+       title = "B1A Temperature Profile")
+B1A_Temperature <- ggsave("B1A_Temperature.pdf", width = 200, height = 50, units = "mm", dpi = 500)
+tempabove60 <- temp_B1A[rowSums(temp_B1A[temperature_columns] > threshold_60, na.rm = TRUE) > 0, ]
+temp60_B1A_long <- pivot_longer(tempabove60, cols = starts_with("Depth"), names_to = "Probe_ID", values_to = "Temperature")
+specific_intervals <- temp60_B1A_long %>%
+  filter(minute(DateTime) == 0)
+max_row <- temp60_B1A_long[which.max(temp60_B1A_long$Temperature), ]
+B1A_Temperature60 <- ggplot(temp60_B1A_long, aes(x = DateTime, y = Temperature, color = Probe_ID))+
+  #geom_point(size = 0.25)+
+  geom_line(size = 1.25)+
+  geom_text(data = max_row, aes(label = Temperature), vjust = -0.5, hjust = 0.5, color = "black", size = 3, show.legend = FALSE) +
+  scale_color_manual(values=probe_colors, limits=probe_order)+
+  theme_bw()+
+  labs(x="One Minute Intervals", 
+       y ="Temperature (ºC)",
+       title = "B1A Temperature Profile above 60ºC")
+B1A_Temperature60 <- ggsave("B1A_Temperature60.pdf", width = 200, height = 120, units = "mm", dpi = 500)
+```
+# B1B + Time above 60ºC
+```{r}
+temp_B1B=read_delim("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/Blodgett/Datalogger Temps/B1B.txt", delim = "\t", col_names = TRUE)
+temp_B1B <- temp_B1B[-c(1:2), ]
+temp_B1B <- temp_B1B[, -1]
+temp_B1B <- temp_B1B %>%
+  dplyr::rename("Depth1" = "Value...4", "Depth2" = "Value...6", "Depth4" = "Value...8", "Depth6" = "Value...10")
+temp_B1B <- temp_B1B[, -c(4,6,8,10)]
+temp_B1B$DateTime <- as.POSIXct(paste(temp_B1B$Date, temp_B1B$Time), format = "%m/%d/%Y %H:%M:%S")
+temp_B1B_long <- pivot_longer(temp_B1B, cols = starts_with("Depth"), names_to = "Probe_ID", values_to = "Temperature")
+specific_intervals <- temp_B1B_long %>%
+  filter(minute(DateTime) == 0)
+B1B_Temperature <- ggplot(temp_B1B_long, aes(x = DateTime, y = Temperature, color = Probe_ID))+
+  #geom_point(size = 0.25)+
+  geom_line(size = 1.25)+
+  scale_color_manual(values=probe_colors, limits=probe_order)+
+  theme_bw()+
+  labs(x="One Minute Intervals", 
+       y ="Temperature (ºC)",
+       title = "B1B Temperature Profile")
+B1B_Temperature <- ggsave("B1B_Temperature.pdf", width = 200, height = 50, units = "mm", dpi = 500)
+tempabove60 <- temp_B1B[rowSums(temp_B1B[temperature_columns] > threshold_60, na.rm = TRUE) > 0, ]
+temp60_B1B_long <- pivot_longer(tempabove60, cols = starts_with("Depth"), names_to = "Probe_ID", values_to = "Temperature")
+specific_intervals <- temp60_B1B_long %>%
+  filter(minute(DateTime) == 0)
+max_rowB1B <- temp60_B1B_long[which.max(temp60_B1B_long$Temperature), ]
+B1B_Temperature60 <- ggplot(temp60_B1B_long, aes(x = Time, y = Temperature, color = Probe_ID))+
+  #geom_point(size = 0.25)+
+  geom_line(size = 1.25)+
+  geom_text(data = max_rowB1B, aes(label = Temperature), vjust = -0.5, hjust = 0.5, color = "black", size = 3, show.legend = FALSE) +
+  scale_color_manual(values=probe_colors, limits=probe_order)+
+  theme_bw()+
+  labs(x="One Minute Intervals", 
+       y ="Temperature (ºC)",
+       title = "B1B Temperature Profile above 60ºC")
+B1B_Temperature60 <- ggsave("B1B_Temperature60.pdf", width = 200, height = 120, units = "mm", dpi = 500)
+```
+# B2A + Time above 60ºC
+```{r}
+temp_B2A=read_delim("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/Blodgett/Datalogger Temps/B2A.txt", delim = "\t", col_names = TRUE)
+temp_B2A <- temp_B2A[-c(1:6), ]
+temp_B2A <- temp_B2A[, -1]
+temp_B2A <- temp_B2A %>%
+  dplyr::rename("Depth1" = "Value...4", "Depth2" = "Value...6", "Depth4" = "Value...8", "Depth6" = "Value...10")
+temp_B2A <- temp_B2A[, -c(4,6,8,10)]
+temp_B2A$DateTime <- as.POSIXct(paste(temp_B2A$Date, temp_B2A$Time), format = "%m/%d/%Y %H:%M:%S")
+temp_B2A_long <- pivot_longer(temp_B2A, cols = starts_with("Depth"), names_to = "Probe_ID", values_to = "Temperature")
+specific_intervals <- temp_B2A_long %>%
+  filter(minute(DateTime) == 0)
+B2A_Temperature <- ggplot(temp_B2A_long, aes(x = DateTime, y = Temperature, color = Probe_ID))+
+  #geom_point(size = 0.25)+
+  geom_line(size = 1.25)+
+  scale_color_manual(values=probe_colors, limits=probe_order)+
+  theme_bw()+
+  labs(x="One Minute Intervals", 
+       y ="Temperature (ºC)",
+       title = "B2A Temperature Profile")
+B2A_Temperature <- ggsave("B2A_Temperature.pdf", width = 200, height = 50, units = "mm", dpi = 500)
+temperature_columns <- c("Depth1", "Depth2", "Depth4", "Depth6")
+threshold_60 <- 60
+tempabove60 <- temp_B2A[rowSums(temp_B2A[temperature_columns] > threshold_60, na.rm = TRUE) > 0, ]
+temp60_B2A_long <- pivot_longer(tempabove60, cols = starts_with("Depth"), names_to = "Probe_ID", values_to = "Temperature")
+specific_intervals <- temp60_B2A_long %>%
+  filter(minute(DateTime) == 0)
+max_rowB2A <- temp60_B2A_long[which.max(temp60_B2A_long$Temperature), ]
+B2A_Temperature60 <- ggplot(temp60_B2A_long, aes(x = Time, y = Temperature, color = Probe_ID))+
+  #geom_point(size = 0.25)+
+  geom_line(size = 1.25)+
+  geom_text(data = max_rowB2A, aes(label = Temperature), vjust = -0.5, hjust = 0.5, color = "black", size = 3, show.legend = FALSE) +
+  scale_color_manual(values=probe_colors, limits=probe_order)+
+  theme_bw()+
+  labs(x="One Minute Intervals", 
+       y ="Temperature (ºC)",
+       title = "B2A Temperature Profile above 60ºC")
+B2A_Temperature60 <- ggsave("B2A_Temperature60.pdf", width = 200, height = 120, units = "mm", dpi = 500)
+```
+# B3B + Time above 60ºC
+```{r}
+temp_B3B=read_delim("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/Blodgett/Datalogger Temps/B3B.txt", delim = "\t", col_names = TRUE)
+temp_B3B <- temp_B3B[-c(1:2), ]
+temp_B3B <- temp_B3B[, -1]
+temp_B3B <- temp_B3B %>%
+  dplyr::rename("Depth1" = "Value...4", "Depth2" = "Value...6", "Depth4" = "Value...8", "Depth6" = "Value...10")
+temp_B3B <- temp_B3B[, -c(4,6,8,10)]
+temp_B3B$DateTime <- as.POSIXct(paste(temp_B3B$Date, temp_B3B$Time), format = "%m/%d/%Y %H:%M:%S")
+temp_B3B_long <- pivot_longer(temp_B3B, cols = starts_with("Depth"), names_to = "Probe_ID", values_to = "Temperature")
+specific_intervals <- temp_B3B_long %>%
+  filter(minute(DateTime) == 0)
+B3B_Temperature <- ggplot(temp_B3B_long, aes(x = DateTime, y = Temperature, color = Probe_ID))+
+  #geom_point(size = 0.25)+
+  geom_line(size = 1.25)+
+  scale_color_manual(values=probe_colors, limits=probe_order)+
+  theme_bw()+
+  labs(x="One Minute Intervals", 
+       y ="Temperature (ºC)",
+       title = "B3B Temperature Profile")
+B3B_Temperature <- ggsave("B3B_Temperature.pdf", width = 200, height = 50, units = "mm", dpi = 500)
+tempabove60 <- temp_B3B[rowSums(temp_B3B[temperature_columns] > threshold_60, na.rm = TRUE) > 0, ]
+temp60_B3B_long <- pivot_longer(tempabove60, cols = starts_with("Depth"), names_to = "Probe_ID", values_to = "Temperature")
+specific_intervals <- temp60_B3B_long %>%
+  filter(minute(DateTime) == 0)
+max_rowB3B <- temp60_B3B_long[which.max(temp60_B3B_long$Temperature), ]
+B3B_Temperature60 <- ggplot(temp60_B3B_long, aes(x = Time, y = Temperature, color = Probe_ID))+
+  #geom_point(size = 0.25)+
+  geom_line(size = 1.25)+
+  geom_text(data = max_rowB3B, aes(label = Temperature), vjust = -0.5, hjust = 0.5, color = "black", size = 3, show.legend = FALSE) +
+  scale_color_manual(values=probe_colors, limits=probe_order)+
+  theme_bw()+
+  labs(x="One Minute Intervals", 
+       y ="Temperature (ºC)",
+       title = "B3B Temperature Profile above 60ºC")
+B3B_Temperature60 <- ggsave("B3B_Temperature60.pdf", width = 200, height = 120, units = "mm", dpi = 500)
+```
+# B4A
+```{r}
+temp_B4A=read_delim("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/Blodgett/Datalogger Temps/U3A.txt", delim = "\t", col_names = TRUE)
+temp_B4A <- temp_B4A[-c(1:2), ]
+temp_B4A <- temp_B4A[, -1]
+temp_B4A <- temp_B4A %>%
+  dplyr::rename("Depth1" = "Value...4", "Depth2" = "Value...6", "Depth4" = "Value...8", "Depth6" = "Value...10")
+temp_B4A <- temp_B4A[, -c(4,6,8,10)]
+temp_B4A$DateTime <- as.POSIXct(paste(temp_B4A$Date, temp_B4A$Time), format = "%m/%d/%Y %H:%M:%S")
+temp_B4A_long <- pivot_longer(temp_B4A, cols = starts_with("Depth"), names_to = "Probe_ID", values_to = "Temperature")
+specific_intervals <- temp_B4A_long %>%
+  filter(minute(DateTime) == 0)
+B4A_Temperature <- ggplot(temp_B4A_long, aes(x = DateTime, y = Temperature, color = Probe_ID))+
+  #geom_point(size = 0.25)+
+  geom_line(size = 1.25)+
+  scale_color_manual(values=probe_colors, limits=probe_order)+
+  theme_bw()+
+  labs(x="One Minute Intervals", 
+       y ="Temperature (ºC)",
+       title = "B4A Temperature Profile")
+B4A_Temperature <- ggsave("B4A_Temperature.pdf", width = 200, height = 50, units = "mm", dpi = 500)
+```
+
+
+
+# Physicochemical Data
+```{r}
+# Upload Physicochemical Data
+chem_blodgett=read_delim("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/input data/blodgett_env_metadata.csv", delim = ",", col_names = TRUE)
+
+#Generate a data frame with the full names of all the variables profiled
+variables <- tribble(
+  ~Variable, ~Variable2,
+  "Moisture", "Gravimetric Soil Moisture (%)",
+  "SoilpH", "1:1 Soil pH",
+  "WDRFBuffer", "WDRF Buffer pH",
+  "SolubleSalt", "1:1 Soluble Salts (mmho/cm)",
+  "OrganicMatter", "Organic Matter (% LOI)",
+  "CO2C", "Soil Respiration CO2-C (ppm C)",
+  "TotalN", "Total Nitrogen (ppm N)",
+  "OrganicN", "Organic Nitrogen (ppm N)",
+  "TotalOrganicC", "Total Organic Carbon (ppm C)",
+  "Nitrate", "Nitrate (ppm NO3-N)",
+  "Ammonium", "Ammonium (ppm NH4-N)",
+  "InorganicNitrogen", "Inorganic Nitrogen (ppm N)",
+  "TotalPhosphorus", "Total (ICAP) Phosphorus (ppm P)",
+  "InorganicPhosphorus", "Inorganic (FIA) Phosphorus (ppm P)",
+  "OrganicPhosphorus", "Organic Phosphorus (ppm P)",
+  "Potassium", "ICAP Potassium (ppm K)",
+  "Calcium", "ICAP Calcium (ppm Ca)",
+  "Aluminum", "ICAP Aluminum (ppm Al)",
+  "Iron", "ICAP Iron (ppm Fe)",
+  "Sulfur", "ICAP sulfur (ppm S)", 
+  "Zinc", "ICAP Zinc (ppm Zn)",
+  "Manganese", "ICAP Manganese (ppm Mn)",
+  "Copper", "ICAP Copper (ppm Cu)",
+  "Magnesium", "ICAP Magnesium (ppm Mg)",
+  "Sodium", "ICAP Sodium (ppm Na)",
+  "MAC", "Microbially Active Carbon (%MAC)",
+  "OrganicCN", "Organic C : Organic N",
+  "OrganicNInorganicN", "Organic N : Inorganic N",
+  "OrganicNRelease", "Organic Nitrogen Release (ppm N)",
+  "OrganicPRelease", "Organic Phosphorus Release (ppm P)",
+  "SoilHealthCalculation", "Soil Health Calculation",
+  "AvailableN", "Available Nitrogen (lbs N/A)",
+  "AvailableP", "Available Phosphorus (lbs P2O5/A)",
+  "AvailableK", "Available Potassium (lbs K2O/A)"
+)
+```
+# Subsetting PhysicoChemical Data
+# Burn plots (including B4), before & after (bba - burn before after)
+```{r}
+bba.metadata <- subset(chem_blodgett, Treatment=="Burn")
+bba.chem.ID=bba.metadata %>%
+  select(-OrganicNRelease, -OrganicPRelease, -SoilHealthCalculation, -OrganicNInorganicN, -WDRFBuffer, -OrganicNReserve, -OrganicPReserve, -AltID, -virome, -Disturbance, -Plot, -SubPlot, -Date, -Treatment, -Burn, -Depth)
+```
+# Original control plots (including B4), before & after (oc - original controls)
+```{r}
+oc.metadata <- subset(chem_blodgett, Plot=="U1" | chem_blodgett$Plot=="U2" | chem_blodgett$Plot=="B4", )
+oc.chem.ID=oc.metadata %>%
+  select(-OrganicNRelease, -OrganicPRelease, -SoilHealthCalculation, -OrganicNInorganicN, -WDRFBuffer, -OrganicNReserve, -OrganicPReserve, -AltID, -virome, -Disturbance, -Plot, -SubPlot, -Date, -Treatment, -Burn, -Depth)
+```
+# Original control plots (including B4), after (oca - original controls after)
+```{r}
+oca.metadata <- subset(oc.metadata, Burn=="After")
+oca.chem.ID=oca.metadata %>%
+  select(-OrganicNRelease, -OrganicPRelease, -SoilHealthCalculation, -OrganicNInorganicN, -WDRFBuffer, -OrganicNReserve, -OrganicPReserve, -AltID, -virome, -Disturbance, -Plot, -SubPlot, -Date, -Treatment, -Burn, -Depth)
+```
+# Control plots (not including B4) (c - control)
+```{r}
+c.metadata <- subset(chem_blodgett, Treatment == "Control")
+c.chem.ID=c.metadata %>%
+  select(-OrganicNRelease, -OrganicPRelease, -SoilHealthCalculation, -OrganicNInorganicN, -WDRFBuffer, -OrganicNReserve, -OrganicPReserve, -AltID, -virome, -Disturbance, -Plot, -SubPlot, -Date, -Treatment, -Burn, -Depth)
+```
+# Control plots, surface samples (cs - control surface)
+```{r}
+cs.metadata <- subset(chem_blodgett, Treatment == "Control" & chem_blodgett$Depth == "0-3cm", )
+cs.chem.ID=cs.metadata %>%
+  select(-OrganicNRelease, -OrganicPRelease, -SoilHealthCalculation, -OrganicNInorganicN, -WDRFBuffer, -OrganicNReserve, -OrganicPReserve, -AltID, -virome, -Disturbance, -Plot, -SubPlot, -Date, -Treatment, -Burn, -Depth)
+```
+
+# All plots, after (a - after)
+```{r}
+a.metadata <- subset(chem_blodgett, Burn=="After")
+a.chem.ID=a.metadata %>%
+  select(-OrganicNRelease, -OrganicPRelease, -SoilHealthCalculation, -OrganicNInorganicN, -WDRFBuffer, -OrganicNReserve, -OrganicPReserve, -AltID, -virome, -Disturbance, -Plot, -SubPlot, -Date, -Treatment, -Burn, -Depth)
+```
+# All plots, no june (nj - no june)
+```{r}
+nj.metadata <- subset(chem_blodgett, Date != "6/20/2021")
+nj.chem.ID=nj.metadata %>%
+  select(-OrganicNRelease, -OrganicPRelease, -SoilHealthCalculation, -OrganicNInorganicN, -WDRFBuffer, -OrganicNReserve, -OrganicPReserve, -AltID, -virome, -Disturbance, -Plot, -SubPlot, -Date, -Treatment, -Burn, -Depth)
+```
+# Burn plots, after (d - disturbance)
+```{r}
+d.metadata <- subset(chem_blodgett, Disturbance=="yes")
+d.chem.ID=d.metadata %>%
+  select(-OrganicNRelease, -OrganicPRelease, -SoilHealthCalculation, -OrganicNInorganicN, -WDRFBuffer, -OrganicNReserve, -OrganicPReserve, -AltID, -virome, -Disturbance, -Plot, -SubPlot, -Date, -Treatment, -Burn, -Depth)
+```
+# Burn plots, after, no june (dnj - disturbance no june)
+```{r}
+dnj.metadata <- subset(chem_blodgett, Disturbance=="yes" & chem_blodgett$Date != "6/20/2021", )
+dnj.chem.ID=dnj.metadata %>%
+  select(-OrganicNRelease, -OrganicPRelease, -SoilHealthCalculation, -OrganicNInorganicN, -WDRFBuffer, -OrganicNReserve, -OrganicPReserve, -AltID, -virome, -Disturbance, -Plot, -SubPlot, -Date, -Treatment, -Burn, -Depth)
+```
+# All plots, before (ab - all before)
+```{r}
+ab.metadata <- subset(chem_blodgett, Burn=="Before")
+ab.chem.ID=ab.metadata %>%
+  select(-OrganicNRelease, -OrganicPRelease, -SoilHealthCalculation, -OrganicNInorganicN, -WDRFBuffer, -OrganicNReserve, -OrganicPReserve, -AltID, -virome, -Disturbance, -Plot, -SubPlot, -Date, -Treatment, -Burn, -Depth)
+```
+# Time point 1 - 4/5/2021 (T1 - timepoint 1)
+```{r}
+T1.metadata <- subset(chem_blodgett, Date=="4/5/2021")
+T1.chem.ID=T1.metadata %>%
+  select(-OrganicNRelease, -OrganicPRelease, -SoilHealthCalculation, -OrganicNInorganicN, -WDRFBuffer, -OrganicNReserve, -OrganicPReserve, -AltID, -virome, -Disturbance, -Plot, -SubPlot, -Date, -Treatment, -Burn, -Depth)
+```
+# Time point 2 - 4/18/2021 (T2 - timepoint 2)
+```{r}
+T2.metadata <- subset(chem_blodgett, Date=="4/18/2021")
+T2.chem.ID=T2.metadata %>%
+  select(-OrganicNRelease, -OrganicPRelease, -SoilHealthCalculation, -OrganicNInorganicN, -WDRFBuffer, -OrganicNReserve, -OrganicPReserve, -AltID, -virome, -Disturbance, -Plot, -SubPlot, -Date, -Treatment, -Burn, -Depth)
+```
+# Time point 3 - 4/27/2021 (T3 - timepoint 3)
+```{r}
+T3.metadata <- subset(chem_blodgett, Date=="4/27/2021")
+T3.chem.ID=T3.metadata %>%
+  select(-OrganicNRelease, -OrganicPRelease, -SoilHealthCalculation, -OrganicNInorganicN, -WDRFBuffer, -OrganicNReserve, -OrganicPReserve, -AltID, -virome, -Disturbance, -Plot, -SubPlot, -Date, -Treatment, -Burn, -Depth)
+```
+# Time point 4 - 5/8/2021 (T4 - timepoint 4)
+```{r}
+T4.metadata <- subset(chem_blodgett, Date=="5/8/2021")
+T4.chem.ID=T4.metadata %>%
+  select(-OrganicNRelease, -OrganicPRelease, -SoilHealthCalculation, -OrganicNInorganicN, -WDRFBuffer, -OrganicNReserve, -OrganicPReserve, -AltID, -virome, -Disturbance, -Plot, -SubPlot, -Date, -Treatment, -Burn, -Depth)
+```
+# Time point 5 - 6/20/2021 (T5 - timepoint 5)
+```{r}
+T5.metadata <- subset(chem_blodgett, Date=="6/20/2021")
+T5.chem.ID=T5.metadata %>%
+  select(-OrganicNRelease, -OrganicPRelease, -SoilHealthCalculation, -OrganicNInorganicN, -WDRFBuffer, -OrganicNReserve, -OrganicPReserve, -AltID, -virome, -Disturbance, -Plot, -SubPlot, -Date, -Treatment, -Burn, -Depth)
+```
+
+# All plots (b - blodgett)
+```{r}
+b.metadata <- chem_blodgett
+b.chem.ID=b.metadata %>%
+  select(-OrganicNRelease, -OrganicPRelease, -SoilHealthCalculation, -OrganicNInorganicN, -WDRFBuffer, -OrganicNReserve, -OrganicPReserve, -AltID, -virome, -Disturbance, -Plot, -SubPlot, -Date, -Treatment, -Burn, -Depth)
+```
+
+# Dendrograms and Heatmaps
+```{r}
+# Load libraries
+library(ggdendro)
+library(cowplot)
+```
+# Burn plots, after (d - disturbance)
+```{r}
+d.chem <- chemprepare(d.chem.ID)
+d.tidy <- chemtidy(d.chem)
+d.mtx <- zmatrix(d.tidy)
+# Calculate distance
+d.samp.dist <- dist(d.mtx)
+d.chem.dist <- dist(t(d.mtx))
+# Perform hierarchical clustering
+d.samp.dd <- as.dendrogram(hclust(as.dist(d.samp.dist), method = "complete"))
+d.samp.ddata_x <- dendro_data(d.samp.dd)
+d.samp.labs <- label(d.samp.ddata_x) %>%
+  dplyr::rename("Soil" = "label") %>%
+  dplyr::rename("SoilOrder" = "x") 
+  #new_order <- c(2, 1, 3, 4, 5, 6, 7, 8, 10, 9, 11, 12)
+  #b.samp.labs$SoilOrder <- new_order
+d.chem.dd <- as.dendrogram(hclust(as.dist(d.chem.dist), method = "complete"))
+d.chem.ddata_x <- dendro_data(d.chem.dd)
+d.chem.labs <- label(d.chem.ddata_x) %>% 
+  dplyr::rename("Variable" = "label") %>% 
+  dplyr::rename("VariableOrder" = "x")
+d.all.nutrients <- envplotter(d.tidy, d.samp.labs, d.chem.labs, variables)
+d.v.p2 <- ggplot(segment(d.samp.ddata_x)) +
+  geom_segment(aes(x=x, y=y, xend=xend, yend=yend))
+d.samp.labs.2 <- label(d.samp.ddata_x) %>%
+  dplyr::rename("Soil" = "label")
+#add back on relevant data
+d.metadata <- d.metadata %>%
+  dplyr::rename("Soil" = "SampleID")
+d.samp.labs.2 <- merge(d.samp.labs.2, d.metadata, by = "Soil", all.x = TRUE)
+d.samp.labs.2=d.samp.labs.2 %>%
+  select(Soil, x, y, Plot, SubPlot, Depth, Date, virome)
+### Plot Dendrogram
+d.v.p2
+d.v.dd <- d.v.p2 + 
+  geom_point(data=d.samp.labs.2,
+             aes(x=x, y=0, shape = virome, color = Plot), size = 2.5, stroke = 0) +
+  coord_flip(expand = TRUE) +
+  #scale_fill_manual(values = c("gold","darkorange","red","lightblue","lightblue","lightblue", "gold", "darkorange", "red","lightblue", "lightblue", "lightblue")) + 
+  #scale_shape_manual(values = c(24, 21)) +
+  theme_classic() +
+  theme(text = element_text(size = 15),
+        axis.text = element_blank(),
+        axis.title = element_blank(),
+        axis.line = element_blank(),
+        axis.ticks = element_blank(),
+        legend.position = "right") +
+  scale_y_reverse() #+
+  #xlim(-0.5,15)
+d.v.dd
+ggsave("d_dd.pdf", width = 150, height = 250, units = "mm", dpi = 500)
+## Heatmap
+d.nut.p <- d.all.nutrients %>% 
+  #mutate(zValue = ifelse(abs(zValue) > 2, 2*sign(zValue), zValue)) %>% 
+  ggplot(aes(reorder(Variable2, VariableOrder), reorder(Soil, SoilOrder))) +
+  geom_tile(aes(fill = zValue),size = 0.005, color = "white") +
+  scale_fill_viridis_c(name = "Concentration\n(z-score)", option = "turbo",
+                        guide = guide_colorbar(title.hjust = 1,
+                                               label.theme = element_text(size = 8, angle = 45, hjust = 1))) +
+  theme_bw() +
+  theme(text = element_text(size = 14),
+        #axis.text.y = element_text(hjust = 1),
+        #axis.text.y = element_blank(),
+        axis.text.y = element_text(hjust = 0),
+        axis.text.x = element_text(angle =45, hjust = 1),
+        axis.title = element_blank(),
+        panel.grid = element_blank(),
+        legend.position = "top") 
+d.nut.p
+ggsave("d_hm.pdf", width = 400, height = 400, units = "mm", dpi = 500)
+```
+# All plots, no june (nj - no june)
+```{r}
+nj.chem <- chemprepare(nj.chem.ID)
+nj.tidy <- chemtidy(nj.chem)
+nj.mtx <- zmatrix(nj.tidy)
+# Calculate distance
+nj.samp.dist <- dist(nj.mtx)
+nj.chem.dist <- dist(t(nj.mtx))
+# Perform hierarchical clustering
+nj.samp.dd <- as.dendrogram(hclust(as.dist(nj.samp.dist), method = "complete"))
+nj.samp.ddata_x <- dendro_data(nj.samp.dd)
+nj.samp.labs <- label(nj.samp.ddata_x) %>%
+  dplyr::rename("Soil" = "label") %>%
+  dplyr::rename("SoilOrder" = "x") 
+  #new_order <- c(2, 1, 3, 4, 5, 6, 7, 8, 10, 9, 11, 12)
+  #b.samp.labs$SoilOrder <- new_order
+nj.chem.dd <- as.dendrogram(hclust(as.dist(nj.chem.dist), method = "complete"))
+nj.chem.ddata_x <- dendro_data(nj.chem.dd)
+nj.chem.labs <- label(nj.chem.ddata_x) %>% 
+  dplyr::rename("Variable" = "label") %>% 
+  dplyr::rename("VariableOrder" = "x")
+nj.all.nutrients <- envplotter(nj.tidy, nj.samp.labs, nj.chem.labs, variables)
+nj.v.p2 <- ggplot(segment(nj.samp.ddata_x)) +
+  geom_segment(aes(x=x, y=y, xend=xend, yend=yend))
+nj.samp.labs.2 <- label(nj.samp.ddata_x) %>%
+  dplyr::rename("Soil" = "label")
+#add back on relevant data
+nj.metadata <- nj.metadata %>%
+  dplyr::rename("Soil" = "SampleID")
+nj.samp.labs.2 <- merge(nj.samp.labs.2, nj.metadata, by = "Soil", all.x = TRUE)
+nj.samp.labs.2=nj.samp.labs.2 %>%
+  select(Soil, x, y, Plot, SubPlot, Depth, Date, virome)
+### Plot Dendrogram
+nj.v.p2
+nj.v.dd <- nj.v.p2 + 
+  geom_point(data=nj.samp.labs.2,
+             aes(x=x, y=0, shape = virome, color = Plot), size = 2.5, stroke = 0) +
+  coord_flip(expand = TRUE) +
+  #scale_fill_manual(values = c("gold","darkorange","red","lightblue","lightblue","lightblue", "gold", "darkorange", "red","lightblue", "lightblue", "lightblue")) + 
+  #scale_shape_manual(values = c(24, 21)) +
+  theme_classic() +
+  theme(text = element_text(size = 15),
+        axis.text = element_blank(),
+        axis.title = element_blank(),
+        axis.line = element_blank(),
+        axis.ticks = element_blank(),
+        legend.position = "right") +
+  scale_y_reverse() #+
+  #xlim(-0.5,15)
+nj.v.dd
+ggsave("nj_dd.pdf", width = 150, height = 250, units = "mm", dpi = 500)
+## Heatmap
+nj.nut.p <- nj.all.nutrients %>% 
+  #mutate(zValue = ifelse(abs(zValue) > 2, 2*sign(zValue), zValue)) %>% 
+  ggplot(aes(reorder(Variable2, VariableOrder), reorder(Soil, SoilOrder))) +
+  geom_tile(aes(fill = zValue),size = 0.005, color = "white") +
+  scale_fill_viridis_c(name = "Concentration\n(z-score)", option = "turbo",
+                        guide = guide_colorbar(title.hjust = 1,
+                                               label.theme = element_text(size = 8, angle = 45, hjust = 1))) +
+  theme_bw() +
+  theme(text = element_text(size = 14),
+        #axis.text.y = element_text(hjust = 1),
+        #axis.text.y = element_blank(),
+        axis.text.y = element_text(hjust = 0),
+        axis.text.x = element_text(angle =45, hjust = 1),
+        axis.title = element_blank(),
+        panel.grid = element_blank(),
+        legend.position = "top") 
+nj.nut.p
+ggsave("nj_hm.pdf", width = 500, height = 400, units = "mm", dpi = 500)
+```
+# Control plots (not including B4) (c - control)
+```{r}
+c.chem <- chemprepare(c.chem.ID)
+c.tidy <- chemtidy(c.chem)
+c.mtx <- zmatrix(c.tidy)
+# Calculate distance
+c.samp.dist <- dist(c.mtx)
+c.chem.dist <- dist(t(c.mtx))
+# Perform hierarchical clustering
+c.samp.dd <- as.dendrogram(hclust(as.dist(c.samp.dist), method = "complete"))
+c.samp.ddata_x <- dendro_data(c.samp.dd)
+c.samp.labs <- label(c.samp.ddata_x) %>%
+  dplyr::rename("Soil" = "label") %>%
+  dplyr::rename("SoilOrder" = "x") 
+  #new_order <- c(2, 1, 3, 4, 5, 6, 7, 8, 10, 9, 11, 12)
+  #b.samp.labs$SoilOrder <- new_order
+c.chem.dd <- as.dendrogram(hclust(as.dist(c.chem.dist), method = "complete"))
+c.chem.ddata_x <- dendro_data(c.chem.dd)
+c.chem.labs <- label(c.chem.ddata_x) %>% 
+  dplyr::rename("Variable" = "label") %>% 
+  dplyr::rename("VariableOrder" = "x")
+c.all.nutrients <- envplotter(c.tidy, c.samp.labs, c.chem.labs, variables)
+c.v.p2 <- ggplot(segment(c.samp.ddata_x)) +
+  geom_segment(aes(x=x, y=y, xend=xend, yend=yend))
+c.samp.labs.2 <- label(c.samp.ddata_x) %>%
+  dplyr::rename("Soil" = "label")
+#add back on relevant data
+c.metadata <- c.metadata %>%
+  dplyr::rename("Soil" = "SampleID")
+c.samp.labs.2 <- merge(c.samp.labs.2, c.metadata, by = "Soil", all.x = TRUE)
+c.samp.labs.2=c.samp.labs.2 %>%
+  select(Soil, x, y, Plot, SubPlot, Depth, Date, virome)
+### Plot Dendrogram
+c.v.p2
+c.samp.labs.2$Date <- factor(c.samp.labs.2$Date, levels = burn_date_order)
+c.v.dd <- c.v.p2 + 
+  geom_point(data=c.samp.labs.2,
+             aes(x=x, y=0, shape = Plot, color = Date), size = 2.5, stroke = 0) +
+  coord_flip(expand = TRUE) +
+  #scale_fill_manual(values = c("gold","darkorange","red","lightblue","lightblue","lightblue", "gold", "darkorange", "red","lightblue", "lightblue", "lightblue")) + 
+  #scale_shape_manual(values = c(24, 21)) +
+  theme_classic() +
+  theme(text = element_text(size = 15),
+        axis.text = element_blank(),
+        axis.title = element_blank(),
+        axis.line = element_blank(),
+        axis.ticks = element_blank(),
+        legend.position = "right") +
+  scale_y_reverse() #+
+  #xlim(-0.5,15)
+c.v.dd
+ggsave("c_dd.pdf", width = 150, height = 250, units = "mm", dpi = 500)
+## Heatmap
+c.nut.p <- c.all.nutrients %>% 
+  #mutate(zValue = ifelse(abs(zValue) > 2, 2*sign(zValue), zValue)) %>% 
+  ggplot(aes(reorder(Variable2, VariableOrder), reorder(Soil, SoilOrder))) +
+  geom_tile(aes(fill = zValue),size = 0.005, color = "white") +
+  scale_fill_viridis_c(name = "Concentration\n(z-score)", option = "turbo",
+                        guide = guide_colorbar(title.hjust = 1,
+                                               label.theme = element_text(size = 8, angle = 45, hjust = 1))) +
+  theme_bw() +
+  theme(text = element_text(size = 14),
+        #axis.text.y = element_text(hjust = 1),
+        #axis.text.y = element_blank(),
+        axis.text.y = element_text(hjust = 0),
+        axis.text.x = element_text(angle =45, hjust = 1),
+        axis.title = element_blank(),
+        panel.grid = element_blank(),
+        legend.position = "top") 
+c.nut.p
+ggsave("c_hm.pdf", width = 500, height = 400, units = "mm", dpi = 500)
+```
+# Control plots, surface samples (cs - control surface)
+```{r}
+cs.chem <- chemprepare(cs.chem.ID)
+cs.tidy <- chemtidy(cs.chem)
+cs.mtx <- zmatrix(cs.tidy)
+# Calculate distance
+cs.samp.dist <- dist(cs.mtx)
+cs.chem.dist <- dist(t(cs.mtx))
+# Perform hierarchical clustering
+cs.samp.dd <- as.dendrogram(hclust(as.dist(cs.samp.dist), method = "complete"))
+cs.samp.ddata_x <- dendro_data(cs.samp.dd)
+cs.samp.labs <- label(cs.samp.ddata_x) %>%
+  dplyr::rename("Soil" = "label") %>%
+  dplyr::rename("SoilOrder" = "x") 
+  #new_order <- c(2, 1, 3, 4, 5, 6, 7, 8, 10, 9, 11, 12)
+  #b.samp.labs$SoilOrder <- new_order
+cs.chem.dd <- as.dendrogram(hclust(as.dist(cs.chem.dist), method = "complete"))
+cs.chem.ddata_x <- dendro_data(cs.chem.dd)
+cs.chem.labs <- label(cs.chem.ddata_x) %>% 
+  dplyr::rename("Variable" = "label") %>% 
+  dplyr::rename("VariableOrder" = "x")
+cs.all.nutrients <- envplotter(cs.tidy, cs.samp.labs, cs.chem.labs, variables)
+cs.v.p2 <- ggplot(segment(cs.samp.ddata_x)) +
+  geom_segment(aes(x=x, y=y, xend=xend, yend=yend))
+cs.samp.labs.2 <- label(cs.samp.ddata_x) %>%
+  dplyr::rename("Soil" = "label")
+#add back on relevant data
+cs.metadata <- cs.metadata %>%
+  dplyr::rename("Soil" = "SampleID")
+cs.samp.labs.2 <- merge(cs.samp.labs.2, cs.metadata, by = "Soil", all.x = TRUE)
+cs.samp.labs.2=cs.samp.labs.2 %>%
+  select(Soil, x, y, Plot, SubPlot, Depth, Date, virome)
+### Plot Dendrogram
+cs.v.p2
+cs.samp.labs.2$Date <- factor(cs.samp.labs.2$Date, levels = burn_date_order)
+cs.v.dd <- cs.v.p2 + 
+  geom_point(data=cs.samp.labs.2,
+             aes(x=x, y=0, shape = Plot, color = Date), size = 2.5, stroke = 0) +
+  coord_flip(expand = TRUE) +
+  #scale_fill_manual(values = c("gold","darkorange","red","lightblue","lightblue","lightblue", "gold", "darkorange", "red","lightblue", "lightblue", "lightblue")) + 
+  #scale_shape_manual(values = c(24, 21)) +
+  theme_classic() +
+  theme(text = element_text(size = 15),
+        axis.text = element_blank(),
+        axis.title = element_blank(),
+        axis.line = element_blank(),
+        axis.ticks = element_blank(),
+        legend.position = "right") +
+  scale_y_reverse() #+
+  #xlim(-0.5,15)
+cs.v.dd
+ggsave("cs_dd.pdf", width = 150, height = 250, units = "mm", dpi = 500)
+## Heatmap
+cs.nut.p <- cs.all.nutrients %>% 
+  #mutate(zValue = ifelse(abs(zValue) > 2, 2*sign(zValue), zValue)) %>% 
+  ggplot(aes(reorder(Variable2, VariableOrder), reorder(Soil, SoilOrder))) +
+  geom_tile(aes(fill = zValue),size = 0.005, color = "white") +
+  scale_fill_viridis_c(name = "Concentration\n(z-score)", option = "turbo",
+                        guide = guide_colorbar(title.hjust = 1,
+                                               label.theme = element_text(size = 8, angle = 45, hjust = 1))) +
+  theme_bw() +
+  theme(text = element_text(size = 14),
+        #axis.text.y = element_text(hjust = 1),
+        #axis.text.y = element_blank(),
+        axis.text.y = element_text(hjust = 0),
+        axis.text.x = element_text(angle =45, hjust = 1),
+        axis.title = element_blank(),
+        panel.grid = element_blank(),
+        legend.position = "top") 
+cs.nut.p
+ggsave("cs_hm.pdf", width = 500, height = 400, units = "mm", dpi = 500)
+```
+# All plots (b - blodgett)
+```{r}
+b.chem <- chemprepare(b.chem.ID)
+b.tidy <- chemtidy(b.chem)
+b.mtx <- zmatrix(b.tidy)
+# Calculate distance
+b.samp.dist <- dist(b.mtx)
+b.chem.dist <- dist(t(b.mtx))
+# Perform hierarchical clustering
+b.samp.dd <- as.dendrogram(hclust(as.dist(b.samp.dist), method = "complete"))
+b.samp.ddata_x <- dendro_data(b.samp.dd)
+b.samp.labs <- label(b.samp.ddata_x) %>%
+  dplyr::rename("Soil" = "label") %>%
+  dplyr::rename("SoilOrder" = "x") 
+  #new_order <- c(2, 1, 3, 4, 5, 6, 7, 8, 10, 9, 11, 12)
+  #b.samp.labs$SoilOrder <- new_order
+b.chem.dd <- as.dendrogram(hclust(as.dist(b.chem.dist), method = "complete"))
+b.chem.ddata_x <- dendro_data(b.chem.dd)
+b.chem.labs <- label(b.chem.ddata_x) %>% 
+  dplyr::rename("Variable" = "label") %>% 
+  dplyr::rename("VariableOrder" = "x")
+b.all.nutrients <- envplotter(b.tidy, b.samp.labs, b.chem.labs, variables)
+b.v.p2 <- ggplot(segment(b.samp.ddata_x)) +
+  geom_segment(aes(x=x, y=y, xend=xend, yend=yend))
+b.samp.labs.2 <- label(b.samp.ddata_x) %>%
+  dplyr::rename("Soil" = "label")
+#add back on relevant data
+b.metadata <- b.metadata %>%
+  dplyr::rename("Soil" = "SampleID")
+b.samp.labs.2 <- merge(b.samp.labs.2, b.metadata, by = "Soil", all.x = TRUE)
+b.samp.labs.2=b.samp.labs.2 %>%
+  select(Soil, x, y, Plot, SubPlot, Depth, Date, virome)
+### Plot Dendrogram
+b.v.p2
+b.samp.labs.2$Date <- factor(b.samp.labs.2$Date, levels = burn_date_order)
+b.v.dd <- b.v.p2 + 
+  geom_point(data=b.samp.labs.2,
+             aes(x=x, y=0, shape = Plot, color = Date), size = 2.5, stroke = 0) +
+  coord_flip(expand = TRUE) +
+  #scale_fill_manual(values = c("gold","darkorange","red","lightblue","lightblue","lightblue", "gold", "darkorange", "red","lightblue", "lightblue", "lightblue")) + 
+  #scale_shape_manual(values = c(24, 21)) +
+  theme_classic() +
+  theme(text = element_text(size = 15),
+        axis.text = element_blank(),
+        axis.title = element_blank(),
+        axis.line = element_blank(),
+        axis.ticks = element_blank(),
+        legend.position = "right") +
+  scale_y_reverse() #+
+  #xlim(-0.5,15)
+b.v.dd
+ggsave("b_dd.pdf", width = 150, height = 250, units = "mm", dpi = 500)
+## Heatmap
+b.nut.p <- b.all.nutrients %>% 
+  #mutate(zValue = ifelse(abs(zValue) > 2, 2*sign(zValue), zValue)) %>% 
+  ggplot(aes(reorder(Variable2, VariableOrder), reorder(Soil, SoilOrder))) +
+  geom_tile(aes(fill = zValue),size = 0.005, color = "white") +
+  scale_fill_viridis_c(name = "Concentration\n(z-score)", option = "turbo",
+                        guide = guide_colorbar(title.hjust = 1,
+                                               label.theme = element_text(size = 8, angle = 45, hjust = 1))) +
+  theme_bw() +
+  theme(text = element_text(size = 14),
+        #axis.text.y = element_text(hjust = 1),
+        #axis.text.y = element_blank(),
+        axis.text.y = element_text(hjust = 0),
+        axis.text.x = element_text(angle =45, hjust = 1),
+        axis.title = element_blank(),
+        panel.grid = element_blank(),
+        legend.position = "top") 
+b.nut.p
+ggsave("b_hm.pdf", width = 500, height = 400, units = "mm", dpi = 500)
+```
+
+
+
+
+# ENVIRONMENTAL PCA
+```{r}
+library(broom)
+library(cowplot)
+library(tidyverse)
+library(lubridate)
+```
+# Control plots, surface samples (cs - control surface)
+```{r}
+#Environmental distance analysis
+#Remove variables with no variation, z-transform each variable, and format it as a matrix
+cs.nut.mtx <- nutmtx(cs.chem.ID)
+cs.map <- cs.metadata[, -c(3:38)]
+cs.map = left_join(cs.map,cs.nut.mtx,by="SampleID")
+cs.nut.mtx <- cs.nut.mtx[,-1]
+cs.nut.mtx <- as.matrix(cs.nut.mtx)
+
+#Calculate the environmental distance and filter redundant values
+cs.nut.dist <- as.matrix(dist(cs.nut.mtx, method = "euclidean"))
+cs.nut.pca=cmdscale(cs.nut.dist, eig = TRUE)
+pcavariance(cs.nut.pca, 1)
+pcavariance(cs.nut.pca, 2)
+cs.nut.pca$points
+cs.nut.pca.points=data.frame(cs.nut.pca$points)
+colnames(cs.nut.pca.points)=c("pca1", "pca2")
+cs.map.pca <- pca.map(cs.nut.pca.points,cs.map)
+
+# PCA plot
+cs.map.pca$Date <- factor(cs.map.pca$Date, levels = burn_date_order)
+
+ggplot(cs.map.pca, aes(x=pca1, y=pca2, color=Date, shape = Plot))+
+  geom_point(size = 5)+
+  xlab("PCA1, 26.05% Variance Explained")+
+  ylab("PCA2, 22.75% Variance Explained")+
+  theme(axis.title = element_text(size = 20)) +
+  theme(legend.text = element_text(size = 20)) +
+  theme(legend.title = element_text(size = 20)) +
+  theme(axis.text = element_text(size = 15))
+
+ggsave("control_surface_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
+# Control plots (not including B4) (c - control)
+```{r}
+#Environmental distance analysis
+#Remove variables with no variation, z-transform each variable, and format it as a matrix
+c.nut.mtx <- nutmtx(c.chem.ID)
+c.map <- c.metadata[, -c(3:38)]
+c.map = left_join(c.map,c.nut.mtx,by="SampleID")
+c.nut.mtx <- c.nut.mtx[,-1]
+c.nut.mtx <- as.matrix(c.nut.mtx)
+
+#Calculate the environmental distance and filter redundant values
+c.nut.dist <- as.matrix(dist(c.nut.mtx, method = "euclidean"))
+c.nut.pca=cmdscale(c.nut.dist, eig = TRUE)
+pcavariance(c.nut.pca, 1)
+pcavariance(c.nut.pca, 2)
+c.nut.pca$points
+c.nut.pca.points=data.frame(c.nut.pca$points)
+colnames(c.nut.pca.points)=c("pca1", "pca2")
+c.map.pca <- pca.map(c.nut.pca.points,c.map)
+
+# PCA plot
+c.map.pca$Date <- factor(c.map.pca$Date, levels = burn_date_order)
+ggplot(c.map.pca, aes(x=pca1, y=pca2, color=Date, shape = Plot))+
+  geom_point(size = 5)+
+  xlab("PCA1, 27.31% Variance Explained")+
+  ylab("PCA2, 18.52% Variance Explained")+
+  theme(axis.title = element_text(size = 20)) +
+  theme(legend.text = element_text(size = 20)) +
+  theme(legend.title = element_text(size = 20)) +
+  theme(axis.text = element_text(size = 15))
+
+ggsave("control_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
+# Burn plots, after (d - disturbance)
+```{r}
+#Environmental distance analysis
+#Remove variables with no variation, z-transform each variable, and format it as a matrix
+d.nut.mtx <- nutmtx(d.chem.ID)
+d.map <- d.metadata[, -c(3:38)]
+d.map = left_join(d.map,d.nut.mtx,by="SampleID")
+d.nut.mtx <- d.nut.mtx[,-1]
+d.nut.mtx <- as.matrix(d.nut.mtx)
+
+#Calculate the environmental distance and filter redundant values
+d.nut.dist <- as.matrix(dist(d.nut.mtx, method = "euclidean"))
+d.nut.pca=cmdscale(d.nut.dist, eig = TRUE)
+pcavariance(d.nut.pca, 1)
+pcavariance(d.nut.pca, 2)
+d.nut.pca$points
+d.nut.pca.points=data.frame(d.nut.pca$points)
+colnames(d.nut.pca.points)=c("pca1", "pca2")
+d.map.pca <- pca.map(d.nut.pca.points,d.map)
+
+# PCA plot
+d.map.pca$Date <- factor(d.map.pca$Date, levels = burn_date_order)
+ggplot(d.map.pca, aes(x=pca1, y=pca2, color=Date, shape = virome))+
+  geom_point(size = 5)+
+  xlab("PCA1, 48.05% Variance Explained")+
+  ylab("PCA2, 15.09% Variance Explained")+
+  theme(axis.title = element_text(size = 20)) +
+  theme(legend.text = element_text(size = 20)) +
+  theme(legend.title = element_text(size = 20)) +
+  theme(axis.text = element_text(size = 15))
+
+ggsave("disturbance_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+
+# PCA plot
+d.map.pca$Date <- factor(d.map.pca$Date, levels = burn_date_order)
+ggplot(d.map.pca, aes(x=pca1, y=pca2, color=Plot, shape = Date))+
+  geom_point(size = 5)+
+  xlab("PCA1, 48.05% Variance Explained")+
+  ylab("PCA2, 15.09% Variance Explained")+
+  theme(axis.title = element_text(size = 20)) +
+  theme(legend.text = element_text(size = 20)) +
+  theme(legend.title = element_text(size = 20)) +
+  theme(axis.text = element_text(size = 15))
+
+ggsave("disturbance_plot_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
+
+# Burn plots, after, no june (dnj - disturbance no june)
+```{r}
+#Environmental distance analysis
+#Remove variables with no variation, z-transform each variable, and format it as a matrix
+dnj.nut.mtx <- nutmtx(dnj.chem.ID)
+dnj.map <- dnj.metadata[, -c(3:38)]
+dnj.map = left_join(dnj.map,dnj.nut.mtx,by="SampleID")
+dnj.nut.mtx <- dnj.nut.mtx[,-1]
+dnj.nut.mtx <- as.matrix(dnj.nut.mtx)
+
+#Calculate the environmental distance and filter redundant values
+dnj.nut.dist <- as.matrix(dist(dnj.nut.mtx, method = "euclidean"))
+dnj.nut.pca=cmdscale(dnj.nut.dist, eig = TRUE)
+pcavariance(dnj.nut.pca, 1)
+pcavariance(dnj.nut.pca, 2)
+dnj.nut.pca$points
+dnj.nut.pca.points=data.frame(dnj.nut.pca$points)
+colnames(dnj.nut.pca.points)=c("pca1", "pca2")
+dnj.map.pca <- pca.map(dnj.nut.pca.points,dnj.map)
+
+# PCA plot
+dnj.map.pca$Date <- factor(dnj.map.pca$Date, levels = burn_date_order)
+ggplot(dnj.map.pca, aes(x=pca1, y=pca2, color=Plot, shape = virome))+
+  geom_point(size = 5)+
+  xlab("PCA1, 49.79% Variance Explained")+
+  ylab("PCA2, 16.14% Variance Explained")+
+  theme(axis.title = element_text(size = 20)) +
+  theme(legend.text = element_text(size = 20)) +
+  theme(legend.title = element_text(size = 20)) +
+  theme(axis.text = element_text(size = 15))
+
+ggsave("disturbance_nojune_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+
+# PCA plot
+dnj.map.pca$Date <- factor(dnj.map.pca$Date, levels = burn_date_order)
+ggplot(dnj.map.pca, aes(x=pca1, y=pca2, color=Plot, shape = Date))+
+  geom_point(size = 5)+
+  xlab("PCA1, 49.79% Variance Explained")+
+  ylab("PCA2, 16.14% Variance Explained")+
+  theme(axis.title = element_text(size = 20)) +
+  theme(legend.text = element_text(size = 20)) +
+  theme(legend.title = element_text(size = 20)) +
+  theme(axis.text = element_text(size = 15))
+
+ggsave("disturbance_nojune_date_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
+# Burn plots (including B4), before & after (bba - burn before after)
+```{r}
+#Environmental distance analysis
+#Remove variables with no variation, z-transform each variable, and format it as a matrix
+bba.nut.mtx <- nutmtx(bba.chem.ID)
+bba.map <- bba.metadata[, -c(3:38)]
+bba.map = left_join(bba.map,bba.nut.mtx,by="SampleID")
+bba.nut.mtx <- bba.nut.mtx[,-1]
+bba.nut.mtx <- as.matrix(bba.nut.mtx)
+
+#Calculate the environmental distance and filter redundant values
+bba.nut.dist <- as.matrix(dist(bba.nut.mtx, method = "euclidean"))
+bba.nut.pca=cmdscale(bba.nut.dist, eig = TRUE)
+pcavariance(bba.nut.pca, 1)
+pcavariance(bba.nut.pca, 2)
+bba.nut.pca$points
+bba.nut.pca.points=data.frame(bba.nut.pca$points)
+colnames(bba.nut.pca.points)=c("pca1", "pca2")
+bba.map.pca <- pca.map(bba.nut.pca.points,bba.map)
+
+# PCA plot
+bba.map.pca$Date <- factor(bba.map.pca$Date, levels = burn_date_order)
+ggplot(bba.map.pca, aes(x=pca1, y=pca2, color=Date, shape = virome))+
+  geom_point(size = 5)+
+  xlab("PCA1, 47.73% Variance Explained")+
+  ylab("PCA2, 13.92% Variance Explained")+
+  theme(axis.title = element_text(size = 20)) +
+  theme(legend.text = element_text(size = 20)) +
+  theme(legend.title = element_text(size = 20)) +
+  theme(axis.text = element_text(size = 15))
+
+ggsave("burn_before_after_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
+# Original control plots (including B4), before & after (oc - original controls)
+```{r}
+#Environmental distance analysis
+#Remove variables with no variation, z-transform each variable, and format it as a matrix
+oc.nut.mtx <- nutmtx(oc.chem.ID)
+oc.map <- oc.metadata[, -c(3:38)]
+oc.map = left_join(oc.map,oc.nut.mtx,by="SampleID")
+oc.nut.mtx <- oc.nut.mtx[,-1]
+oc.nut.mtx <- as.matrix(oc.nut.mtx)
+
+#Calculate the environmental distance and filter redundant values
+oc.nut.dist <- as.matrix(dist(oc.nut.mtx, method = "euclidean"))
+oc.nut.pca=cmdscale(oc.nut.dist, eig = TRUE)
+pcavariance(oc.nut.pca, 1)
+pcavariance(oc.nut.pca, 2)
+oc.nut.pca$points
+oc.nut.pca.points=data.frame(oc.nut.pca$points)
+colnames(oc.nut.pca.points)=c("pca1", "pca2")
+oc.map.pca <- pca.map(oc.nut.pca.points,oc.map)
+
+# PCA plot
+oc.map.pca$Date <- factor(oc.map.pca$Date, levels = burn_date_order)
+ggplot(oc.map.pca, aes(x=pca1, y=pca2, color=Date, shape = Plot))+
+  geom_point(size = 5)+
+  xlab("PCA1, 37.41% Variance Explained")+
+  ylab("PCA2, 18.42% Variance Explained")+
+  theme(axis.title = element_text(size = 20)) +
+  theme(legend.text = element_text(size = 20)) +
+  theme(legend.title = element_text(size = 20)) +
+  theme(axis.text = element_text(size = 15))
+
+ggsave("original_controls_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
+# Original control plots (including B4), after (oca - original controls after)
+```{r}
+#Environmental distance analysis
+#Remove variables with no variation, z-transform each variable, and format it as a matrix
+oca.nut.mtx <- nutmtx(oca.chem.ID)
+oca.map <- oca.metadata[, -c(3:38)]
+oca.map = left_join(oca.map,oca.nut.mtx,by="SampleID")
+oca.nut.mtx <- oca.nut.mtx[,-1]
+oca.nut.mtx <- as.matrix(oca.nut.mtx)
+
+#Calculate the environmental distance and filter redundant values
+oca.nut.dist <- as.matrix(dist(oca.nut.mtx, method = "euclidean"))
+oca.nut.pca=cmdscale(oca.nut.dist, eig = TRUE)
+pcavariance(oca.nut.pca, 1)
+pcavariance(oca.nut.pca, 2)
+oca.nut.pca$points
+oca.nut.pca.points=data.frame(oca.nut.pca$points)
+colnames(oca.nut.pca.points)=c("pca1", "pca2")
+oca.map.pca <- pca.map(oca.nut.pca.points,oca.map)
+
+# PCA plot
+oca.map.pca$Date <- factor(oca.map.pca$Date, levels = burn_date_order)
+ggplot(oca.map.pca, aes(x=pca1, y=pca2, color=Date, shape = Plot))+
+  geom_point(size = 5)+
+  xlab("PCA1, 42.30% Variance Explained")+
+  ylab("PCA2, 18.65% Variance Explained")+
+  theme(axis.title = element_text(size = 20)) +
+  theme(legend.text = element_text(size = 20)) +
+  theme(legend.title = element_text(size = 20)) +
+  theme(axis.text = element_text(size = 15))
+
+ggsave("original_controls_after_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
+
+# All plots, after (a - after)
+```{r}
+#Environmental distance analysis
+#Remove variables with no variation, z-transform each variable, and format it as a matrix
+a.nut.mtx <- nutmtx(a.chem.ID)
+a.map <- a.metadata[, -c(3:38)]
+a.map = left_join(a.map,a.nut.mtx,by="SampleID")
+a.nut.mtx <- a.nut.mtx[,-1]
+a.nut.mtx <- as.matrix(a.nut.mtx)
+
+#Calculate the environmental distance and filter redundant values
+a.nut.dist <- as.matrix(dist(a.nut.mtx, method = "euclidean"))
+a.nut.pca=cmdscale(a.nut.dist, eig = TRUE)
+pcavariance(a.nut.pca, 1)
+pcavariance(a.nut.pca, 2)
+a.nut.pca$points
+a.nut.pca.points=data.frame(a.nut.pca$points)
+colnames(a.nut.pca.points)=c("pca1", "pca2")
+a.map.pca <- pca.map(a.nut.pca.points,a.map)
+
+# PCA plot
+a.map.pca$Date <- factor(a.map.pca$Date, levels = burn_date_order)
+ggplot(a.map.pca, aes(x=pca1, y=pca2, color=Plot, shape = Date))+
+  geom_point(size = 5)+
+  xlab("PCA1, 49.86% Variance Explained")+
+  ylab("PCA2, 14.07% Variance Explained")+
+  theme(axis.title = element_text(size = 20)) +
+  theme(legend.text = element_text(size = 20)) +
+  theme(legend.title = element_text(size = 20)) +
+  theme(axis.text = element_text(size = 15))
+
+ggsave("after_burn_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
+# All plots, before (ab - all before)
+```{r}
+#Environmental distance analysis
+#Remove variables with no variation, z-transform each variable, and format it as a matrix
+ab.nut.mtx <- nutmtx(ab.chem.ID)
+ab.map <- ab.metadata[, -c(3:38)]
+ab.map = left_join(ab.map,ab.nut.mtx,by="SampleID")
+ab.nut.mtx <- ab.nut.mtx[,-1]
+ab.nut.mtx <- as.matrix(ab.nut.mtx)
+
+#Calculate the environmental distance and filter redundant values
+ab.nut.dist <- as.matrix(dist(ab.nut.mtx, method = "euclidean"))
+ab.nut.pca=cmdscale(ab.nut.dist, eig = TRUE)
+pcavariance(ab.nut.pca, 1)
+pcavariance(ab.nut.pca, 2)
+ab.nut.pca$points
+ab.nut.pca.points=data.frame(ab.nut.pca$points)
+colnames(ab.nut.pca.points)=c("pca1", "pca2")
+ab.map.pca <- pca.map(ab.nut.pca.points,ab.map)
+
+# PCA plot
+ab.map.pca$Date <- factor(ab.map.pca$Date, levels = burn_date_order)
+ggplot(ab.map.pca, aes(x=pca1, y=pca2, color=Plot, shape = Date))+
+  geom_point(size = 5)+
+  xlab("PCA1, 27.87% Variance Explained")+
+  ylab("PCA2, 21.45% Variance Explained")+
+  theme(axis.title = element_text(size = 20)) +
+  theme(legend.text = element_text(size = 20)) +
+  theme(legend.title = element_text(size = 20)) +
+  theme(axis.text = element_text(size = 15))
+
+ggsave("before_burn_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
+# Time point 1 - 4/5/2021 (T1 - timepoint 1)
+```{r}
+#Environmental distance analysis
+#Remove variables with no variation, z-transform each variable, and format it as a matrix
+T1.nut.mtx <- nutmtx(T1.chem.ID)
+T1.map <- T1.metadata[, -c(3:38)]
+T1.map = left_join(T1.map,T1.nut.mtx,by="SampleID")
+T1.nut.mtx <- T1.nut.mtx[,-1]
+T1.nut.mtx <- as.matrix(T1.nut.mtx)
+
+#Calculate the environmental distance and filter redundant values
+T1.nut.dist <- as.matrix(dist(T1.nut.mtx, method = "euclidean"))
+T1.nut.pca=cmdscale(T1.nut.dist, eig = TRUE)
+pcavariance(T1.nut.pca, 1)
+pcavariance(T1.nut.pca, 2)
+T1.nut.pca$points
+T1.nut.pca.points=data.frame(T1.nut.pca$points)
+colnames(T1.nut.pca.points)=c("pca1", "pca2")
+T1.map.pca <- pca.map(T1.nut.pca.points,T1.map)
+
+# PCA plot
+T1.map.pca$Date <- factor(T1.map.pca$Date, levels = burn_date_order)
+T1 <- ggplot(T1.map.pca, aes(x=pca1, y=pca2, color=Plot, shape = Depth))+
+  geom_point(size = 5)+
+  xlab("PCA1, 39.19% Variance Explained")+
+  ylab("PCA2, 24.35% Variance Explained")+
+  theme(axis.title = element_text(size = 20)) +
+  theme(legend.text = element_text(size = 20)) +
+  theme(legend.title = element_text(size = 20)) +
+  theme(axis.text = element_text(size = 15))
+
+ggsave("T1_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
+# Time point 2 - 4/18/2021 (T2 - timepoint 2)
+```{r}
+#Environmental distance analysis
+#Remove variables with no variation, z-transform each variable, and format it as a matrix
+T2.nut.mtx <- nutmtx(T2.chem.ID)
+T2.map <- T2.metadata[, -c(3:38)]
+T2.map = left_join(T2.map,T2.nut.mtx,by="SampleID")
+T2.nut.mtx <- T2.nut.mtx[,-1]
+T2.nut.mtx <- as.matrix(T2.nut.mtx)
+
+#Calculate the environmental distance and filter redundant values
+T2.nut.dist <- as.matrix(dist(T2.nut.mtx, method = "euclidean"))
+T2.nut.pca=cmdscale(T2.nut.dist, eig = TRUE)
+pcavariance(T2.nut.pca, 1)
+pcavariance(T2.nut.pca, 2)
+T2.nut.pca$points
+T2.nut.pca.points=data.frame(T2.nut.pca$points)
+colnames(T2.nut.pca.points)=c("pca1", "pca2")
+T2.map.pca <- pca.map(T2.nut.pca.points,T2.map)
+
+# PCA plot
+T2.map.pca$Date <- factor(T2.map.pca$Date, levels = burn_date_order)
+T2 <- ggplot(T2.map.pca, aes(x=pca1, y=pca2, color=Plot, shape = Depth))+
+  geom_point(size = 5)+
+  xlab("PCA1, 31.87% Variance Explained")+
+  ylab("PCA2, 18.99% Variance Explained")+
+  theme(axis.title = element_text(size = 20)) +
+  theme(legend.text = element_text(size = 20)) +
+  theme(legend.title = element_text(size = 20)) +
+  theme(axis.text = element_text(size = 15))
+
+ggsave("T2_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
+# Time point 3 - 4/27/2021 (T3 - timepoint 3)
+```{r}
+#Environmental distance analysis
+#Remove variables with no variation, z-transform each variable, and format it as a matrix
+T3.nut.mtx <- nutmtx(T3.chem.ID)
+T3.map <- T3.metadata[, -c(3:38)]
+T3.map = left_join(T3.map,T3.nut.mtx,by="SampleID")
+T3.nut.mtx <- T3.nut.mtx[,-1]
+T3.nut.mtx <- as.matrix(T3.nut.mtx)
+
+#Calculate the environmental distance and filter redundant values
+T3.nut.dist <- as.matrix(dist(T3.nut.mtx, method = "euclidean"))
+T3.nut.pca=cmdscale(T3.nut.dist, eig = TRUE)
+pcavariance(T3.nut.pca, 1)
+pcavariance(T3.nut.pca, 2)
+T3.nut.pca$points
+T3.nut.pca.points=data.frame(T3.nut.pca$points)
+colnames(T3.nut.pca.points)=c("pca1", "pca2")
+T3.map.pca <- pca.map(T3.nut.pca.points,T3.map)
+
+# PCA plot
+T3.map.pca$Date <- factor(T3.map.pca$Date, levels = burn_date_order)
+T3 <- ggplot(T3.map.pca, aes(x=pca1, y=pca2, color=Plot, shape = Depth))+
+  geom_point(size = 5)+
+  xlab("PCA1, 53.53% Variance Explained")+
+  ylab("PCA2, 17.57% Variance Explained")+
+  theme(axis.title = element_text(size = 20)) +
+  theme(legend.text = element_text(size = 20)) +
+  theme(legend.title = element_text(size = 20)) +
+  theme(axis.text = element_text(size = 15))
+
+ggsave("T3_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
+# Time point 4 - 5/8/2021 (T4 - timepoint 4)
+```{r}
+#Environmental distance analysis
+#Remove variables with no variation, z-transform each variable, and format it as a matrix
+T4.nut.mtx <- nutmtx(T4.chem.ID)
+T4.map <- T4.metadata[, -c(3:38)]
+T4.map = left_join(T4.map,T4.nut.mtx,by="SampleID")
+T4.nut.mtx <- T4.nut.mtx[,-1]
+T4.nut.mtx <- as.matrix(T4.nut.mtx)
+
+#Calculate the environmental distance and filter redundant values
+T4.nut.dist <- as.matrix(dist(T4.nut.mtx, method = "euclidean"))
+T4.nut.pca=cmdscale(T4.nut.dist, eig = TRUE)
+pcavariance(T4.nut.pca, 1)
+pcavariance(T4.nut.pca, 2)
+T4.nut.pca$points
+T4.nut.pca.points=data.frame(T4.nut.pca$points)
+colnames(T4.nut.pca.points)=c("pca1", "pca2")
+T4.map.pca <- pca.map(T4.nut.pca.points,T4.map)
+
+# PCA plot
+T4.map.pca$Date <- factor(T4.map.pca$Date, levels = burn_date_order)
+T4 <- ggplot(T4.map.pca, aes(x=pca1, y=pca2, color=Plot, shape = Depth))+
+  geom_point(size = 5)+
+  xlab("PCA1, 55.91% Variance Explained")+
+  ylab("PCA2, 16.58% Variance Explained")+
+  theme(axis.title = element_text(size = 20)) +
+  theme(legend.text = element_text(size = 20)) +
+  theme(legend.title = element_text(size = 20)) +
+  theme(axis.text = element_text(size = 15))
+
+ggsave("T4_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
+# Time point 5 - 6/20/2021 (T5 - timepoint 5)
+```{r}
+#Environmental distance analysis
+#Remove variables with no variation, z-transform each variable, and format it as a matrix
+T5.nut.mtx <- nutmtx(T5.chem.ID)
+T5.map <- T5.metadata[, -c(3:38)]
+T5.map = left_join(T5.map,T5.nut.mtx,by="SampleID")
+T5.nut.mtx <- T5.nut.mtx[,-1]
+T5.nut.mtx <- as.matrix(T5.nut.mtx)
+
+#Calculate the environmental distance and filter redundant values
+T5.nut.dist <- as.matrix(dist(T5.nut.mtx, method = "euclidean"))
+T5.nut.pca=cmdscale(T5.nut.dist, eig = TRUE)
+pcavariance(T5.nut.pca, 1)
+pcavariance(T5.nut.pca, 2)
+T5.nut.pca$points
+T5.nut.pca.points=data.frame(T5.nut.pca$points)
+colnames(T5.nut.pca.points)=c("pca1", "pca2")
+T5.map.pca <- pca.map(T5.nut.pca.points,T5.map)
+
+# PCA plot
+T5.map.pca$Date <- factor(T5.map.pca$Date, levels = burn_date_order)
+T5 <- ggplot(T5.map.pca, aes(x=pca1, y=pca2, color=Plot, shape = Depth))+
+  geom_point(size = 5)+
+  xlab("PCA1, 57.94% Variance Explained")+
+  ylab("PCA2, 15.28% Variance Explained")+
+  theme(axis.title = element_text(size = 20)) +
+  theme(legend.text = element_text(size = 20)) +
+  theme(legend.title = element_text(size = 20)) +
+  theme(axis.text = element_text(size = 15))
+
+ggsave("T5_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
+# All plots (b - blodgett)
+```{r}
+#Environmental distance analysis
+#Remove variables with no variation, z-transform each variable, and format it as a matrix
+b.nut.mtx <- nutmtx(b.chem.ID)
+b.map <- b.metadata[, -c(3:38)]
+b.map = left_join(b.map,b.nut.mtx,by="SampleID")
+b.nut.mtx <- b.nut.mtx[,-1]
+b.nut.mtx <- as.matrix(b.nut.mtx)
+
+#Calculate the environmental distance and filter redundant values
+b.nut.dist <- as.matrix(dist(b.nut.mtx, method = "euclidean"))
+b.nut.pca=cmdscale(b.nut.dist, eig = TRUE)
+pcavariance(b.nut.pca, 1)
+pcavariance(b.nut.pca, 2)
+b.nut.pca$points
+b.nut.pca.points=data.frame(b.nut.pca$points)
+colnames(b.nut.pca.points)=c("pca1", "pca2")
+b.map.pca <- pca.map(b.nut.pca.points,b.map)
+
+# PCA plot
+b.map.pca$Date <- factor(b.map.pca$Date, levels = burn_date_order)
+b <- ggplot(b.map.pca, aes(x=pca1, y=pca2, color=Plot, shape = Depth, frame = Date))+
+  geom_point(size = 5)+
+  xlab("PCA1, 47.41% Variance Explained")+
+  ylab("PCA2, 13.82% Variance Explained")+
+  theme(axis.title = element_text(size = 20)) +
+  theme(legend.text = element_text(size = 20)) +
+  theme(legend.title = element_text(size = 20)) +
+  theme(axis.text = element_text(size = 15))
+
+ggsave("b_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
+# animate
+```{r}
+library(gganimate)
+theme_set(theme_bw())
+
+b.animate <- b + transition_states(Date, transition_length = 2, state_length = 1) +
+  enter_fade() + exit_fade()
+b.animate <- animate(b.animate)
+install.packages("gifski")
+library(gifski)
+png.files <- list.files(pattern = "\\.png$")
+gifski(png.files, "animation.gif", width = 800, height = 600, delay = 0.1)
+```
+

@@ -1,0 +1,850 @@
+---
+title: "Ch2Blodgett_virome"
+output: html_document
+date: "2024-03-03"
+---
+# LOAD PACKAGES
+```{r}
+library(tidyverse)
+library(vegan)
+library(lubridate)
+library(dplyr)
+library(ComplexUpset)
+```
+# Read Input Files
+```{r}
+otu <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/blodgett_all_otu.RDS")
+blodgett_data <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/blodgett_all_metadata.RDS")
+```
+#DNA Yields
+```{r}
+dnayields <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/blodgett_dnayields.RDS")
+
+DNAyield <- dnayields %>%
+  ggplot(aes(x = factor(Date, level = burn_date_order), y = DNA, fill = factor(Depth, level = depth_order))) +
+  annotate('rect', xmin = -Inf, xmax = 2.5, ymin = -Inf, ymax = Inf, fill = 'palegreen', alpha = 0.5) +
+  geom_boxplot() + #outlier.shape=NA) +
+  geom_point(aes(group = interaction(Depth, Date)),
+             position = position_dodge(width = 0.75),
+             size = 0.5) +
+  xlab("Time") +
+  ylab("DNA Yield (ng)") +
+  theme_bw() +
+  theme(axis.title = element_text(size = 20)) +
+  theme(legend.position = "bottom", legend.text = element_text(size=20), legend.title = element_text(size=20)) +
+  theme(axis.text = element_text(size = 16)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_manual(name = "Depth", 
+                    values = depth_colors) +
+  facet_wrap(~ Treatment)
+
+DNAyield + theme(strip.text = element_text(size=14))
+ggsave("Blodgett_DNAyield.pdf", width = 200, height = 120, units = "mm", dpi = 500)
+```
+# PCoA of Entire Dataset
+```{r}
+dfname <- "otu"
+df <- get(dfname)
+otu <- rmv_sngl(df)
+otu.rel <- relativize(otu)
+colSums(otu.rel)
+richness <- colSums(otu.rel > 0)
+blodgett_data$Richness <- richness
+
+otu.dist <- distance(otu.rel)
+otu.pcoa <- pcoa(otu.dist)
+otu.pcoa.points <- pcoa.points(otu.pcoa)
+otu.map <- pcoa.map(otu.pcoa.points, blodgett_data)
+variance(otu.pcoa, 1)
+variance(otu.pcoa, 2)
+
+# Disturbance + Depth
+pcoa.plot.disturbancedepth(otu.map, x_col = pcoa1, y_col = pcoa2, color_col= Disturbance, shape_col = Depth, x_label = "14.24% Variance Explained", y_label = "13.13% Variance Explained", title = "All Blodgett Virome", filename = "all_blodgett_disturbance.pdf")
+
+# Plot + Date
+pcoa.plot.plot(otu.map, x_col = pcoa1, y_col = pcoa2, color_col= Plot, shape_col = Date, x_label = "14.24% Variance Explained", y_label = "13.13% Variance Explained", title = NULL, filename = "all_blodgett_plot.pdf")
+
+# run PERMANOVAs
+variables <- c("Disturbance", "Depth", "Date", "Treatment", "Plot")
+adonis.results <- run_adonis(variables, otu.dist, otu.map)
+adonis.table <- do.call(rbind, adonis.results)
+```
+# SUBSET DATA: Abundance(Remove Singletons & Relativize), Metadata, & Count)
+# Subset by Experiment
+```{r}
+# Prescribed Burn (2021)
+p.otu <- otu[, blodgett_data$Treatment=="Prescribed_Burn" | blodgett_data$Treatment=="Prescribed_Control"] %>%
+  rmv_sngl()
+p.otu.rel <- relativize(p.otu)
+colSums(p.otu.rel)
+p.map <- subset(blodgett_data, Treatment=="Prescribed_Burn" | blodgett_data$Treatment=="Prescribed_Control")
+richness <- colSums(p.otu.rel > 0)
+p.map$Richness <- richness
+
+# 2021 (only control)
+pu.otu <- otu[, blodgett_data$Treatment=="Prescribed_Control"] %>%
+  rmv_sngl()
+pu.otu.rel <- relativize(pu.otu)
+colSums(pu.otu.rel)
+pu.map <- subset(blodgett_data, Treatment=="Prescribed_Control")
+richness <- colSums(pu.otu.rel > 0)
+pu.map$Richness <- richness
+
+# 2021 (only treatment plots)
+b.otu <- otu[, blodgett_data$Treatment=="Prescribed_Burn"] %>%
+  rmv_sngl()
+b.otu.rel <- relativize(b.otu)
+colSums(b.otu.rel)
+b.map <- subset(blodgett_data, Treatment=="Prescribed_Burn")
+richness <- colSums(b.otu.rel > 0)
+b.map$Richness <- richness
+
+# 2021, after burn (all plots)
+ab.otu <- otu[, blodgett_data$Burn=="After"] %>%
+  rmv_sngl()
+ab.otu.rel <- relativize(ab.otu)
+colSums(ab.otu.rel)
+ab.map <- subset(blodgett_data, Burn=="After")
+richness <- colSums(ab.otu.rel > 0)
+ab.map$Richness <- richness
+
+# 2021, before burn (all plots)
+bb.otu <- otu[, blodgett_data$Burn=="Before"] %>%
+  rmv_sngl()
+bb.otu.rel <- relativize(bb.otu)
+colSums(bb.otu.rel)
+bb.map <- subset(blodgett_data, Burn=="Before")
+richness <- colSums(bb.otu.rel > 0)
+bb.map$Richness <- richness
+
+# Heat Experiment (2022)
+h.otu <- otu[,blodgett_data$Date=="4/18/2022"] %>%
+  rmv_sngl()
+h.otu.rel <- relativize(h.otu)
+colSums(h.otu.rel)
+h.map <- subset(blodgett_data, Date=="4/18/2022")
+richness <- colSums(h.otu.rel > 0)
+h.map$Richness <- richness
+```
+# Subset by plots U1 and U2
+```{r}
+# U1 + U2
+u.otu <- otu[, blodgett_data$Plot=="U1" | blodgett_data$Plot=="U2"] %>%
+  rmv_sngl()
+u.otu.rel <- relativize(u.otu)
+colSums(u.otu.rel)
+u.map <- subset(blodgett_data, Plot=="U1" | blodgett_data$Plot=="U2")
+richness <- colSums(u.otu.rel > 0)
+u.map$Richness <- richness
+
+# Just U1 plots
+u1.otu <- otu[, blodgett_data$Plot=="U1"] %>%
+  rmv_sngl()
+u1.otu.rel <- relativize(u1.otu)
+colSums(u1.otu.rel)
+u1.map <- subset(blodgett_data, Plot=="U1")
+richness <- colSums(u1.otu.rel > 0)
+u1.map$Richness <- richness
+```
+# Subset by Depth
+```{r}
+# 0-3cm
+s.otu <- otu[, blodgett_data$Depth=="0-3cm"] %>%
+  rmv_sngl()
+s.otu.rel <- relativize(s.otu)
+colSums(s.otu.rel)
+s.map <- subset(blodgett_data, Depth=="0-3cm")
+richness <- colSums(s.otu.rel > 0)
+s.map$Richness <- richness
+
+# 3-6 cm
+d.otu <- otu[, blodgett_data$Depth=="3-6cm"] %>%
+  rmv_sngl()
+d.otu.rel <- relativize(d.otu)
+colSums(d.otu.rel)
+d.map <- subset(blodgett_data, Depth=="3-6cm")
+richness <- colSums(d.otu.rel > 0)
+d.map$Richness <- richness
+```
+
+#PCOA of Subset Data
+```{r}
+# Control Plots Only (include heat samples)
+u.otu.dist <- distance(u.otu.rel)
+u.otu.pcoa <- pcoa(u.otu.dist)
+u.otu.pcoa.points <- pcoa.points(u.otu.pcoa)
+u.otu.map <- pcoa.map(u.otu.pcoa.points, blodgett_data)
+variance(u.otu.pcoa, 1)
+variance(u.otu.pcoa, 2)
+pcoa.plot.disturbancedepth(u.otu.map, x_col = pcoa1, y_col = pcoa2, color_col= Disturbance, shape_col = Depth, x_label = "27.55% Variance Explained", y_label = "16.26% Variance Explained", title = "Control Plots Virome", filename = "Uplots_blodgett_disturbance.pdf")
+pcoa.plot.plot(u.otu.map, x_col = pcoa1, y_col = pcoa2, color_col= Plot, shape_col = Date, x_label = "27.55% Variance Explained", y_label = "16.26% Variance Explained", title = "Control Plots Virome", filename = "Uplots_blodgett_plot.pdf")
+# run PERMANOVAs
+variables <- c("Disturbance", "Depth", "Date", "Treatment", "Plot")
+u.adonis.results <- run_adonis(variables, u.otu.dist, u.otu.map)
+u.adonis.table <- do.call(rbind, u.adonis.results)
+
+# Control Plots Only (without heat samples)
+pu.otu.dist <- distance(pu.otu.rel)
+pu.otu.pcoa <- pcoa(pu.otu.dist)
+pu.otu.pcoa.points <- pcoa.points(pu.otu.pcoa)
+pu.otu.map <- pcoa.map(pu.otu.pcoa.points, blodgett_data)
+variance(pu.otu.pcoa, 1)
+variance(pu.otu.pcoa, 2)
+pcoa.plot.plot(pu.otu.map, x_col = pcoa1, y_col = pcoa2, color_col= Plot, shape_col = Date, x_label = "12.07% Variance Explained", y_label = "7.68% Variance Explained", title = "Control Plots 2021 Virome", filename = "Uplots_prescribed_plot.pdf")
+# run PERMANOVAs
+variables <- c("Depth", "Date", "Plot")
+pu.adonis.results <- run_adonis(variables, pu.otu.dist, pu.otu.map)
+pu.adonis.table <- do.call(rbind, pu.adonis.results)
+
+# 0-3 cm samples only (include heat samples)
+s.otu.dist <- distance(s.otu.rel)
+s.otu.pcoa <- pcoa(s.otu.dist)
+s.otu.pcoa.points <- pcoa.points(s.otu.pcoa)
+s.otu.map <- pcoa.map(s.otu.pcoa.points, blodgett_data)
+variance(s.otu.pcoa, 1)
+variance(s.otu.pcoa, 2)
+pcoa.plot.disturbance(s.otu.map, x_col = pcoa1, y_col = pcoa2, color_col= Disturbance, shape_col = Date, x_label = "24.79% Variance Explained", y_label = "5.23% Variance Explained", title = "0-3cm Depth, All Blodgett Viromes", filename = "Surface_blodgett_disturbance.pdf")
+pcoa.plot.plot(s.otu.map, x_col = pcoa1, y_col = pcoa2, color_col= Plot, shape_col = Date, x_label = "24.79% Variance Explained", y_label = "5.23% Variance Explained", title = "0-3cm Depth, All Blodgett Viromes", filename = "Surface_blodgett_plot.pdf")
+# run PERMANOVAs
+variables <- c("Disturbance", "Date", "Treatment", "Plot")
+s.adonis.results <- run_adonis(variables, s.otu.dist, s.otu.map)
+s.adonis.table <- do.call(rbind, s.adonis.results)
+
+# 3-6 cm samples only (include heat samples)
+d.otu.dist <- distance(d.otu.rel)
+d.otu.pcoa <- pcoa(d.otu.dist)
+d.otu.pcoa.points <- pcoa.points(d.otu.pcoa)
+d.otu.map <- pcoa.map(d.otu.pcoa.points, blodgett_data)
+variance(d.otu.pcoa, 1)
+variance(d.otu.pcoa, 2)
+pcoa.plot.disturbance(d.otu.map, x_col = pcoa1, y_col = pcoa2, color_col= Disturbance, shape_col = Date, x_label = "22.30% Variance Explained", y_label = "5.96% Variance Explained", title = "3-6cm Depth, All Blodgett Viromes", filename = "Deep_blodgett_disturbance.pdf")
+pcoa.plot.plot(d.otu.map, x_col = pcoa1, y_col = pcoa2, color_col= Plot, shape_col = Date, x_label = "22.30% Variance Explained", y_label = "5.96% Variance Explained", title = "3-6cm Depth, All Blodgett Viromes", filename = "Deep_blodgett_plot.pdf")
+# run PERMANOVAs
+variables <- c("Disturbance", "Date", "Treatment", "Plot")
+d.adonis.results <- run_adonis(variables, d.otu.dist, d.otu.map)
+d.adonis.table <- do.call(rbind, d.adonis.results)
+
+# Prescribed Burn (2021) Samples Only
+p.otu.dist <- distance(p.otu.rel)
+p.otu.pcoa <- pcoa(p.otu.dist)
+p.otu.pcoa.points <- pcoa.points(p.otu.pcoa)
+p.otu.map <- pcoa.map(p.otu.pcoa.points, blodgett_data)
+variance(p.otu.pcoa, 1)
+variance(p.otu.pcoa, 2)
+pcoa.plot.disturbance(p.otu.map, x_col = pcoa1, y_col = pcoa2, color_col= Disturbance, shape_col = Date, x_label = "5.33% Variance Explained", y_label = "4.32% Variance Explained", title = "2021 Blodgett Viromes", filename = "2021_blodgett_disturbance.pdf")
+pcoa.plot.plot(p.otu.map, x_col = pcoa1, y_col = pcoa2, color_col= Plot, shape_col = Date, x_label = "5.33% Variance Explained", y_label = "4.32% Variance Explained", title = "2021 Blodgett Viromes", filename = "2021_blodgett_plot.pdf")
+# run PERMANOVAs
+variables <- c("Disturbance", "Depth", "Date", "Treatment", "Plot")
+p.adonis.results <- run_adonis(variables, p.otu.dist, p.otu.map)
+p.adonis.table <- do.call(rbind, p.adonis.results)
+
+# Just U1 Plots (2021 and 2022)
+u1.otu.dist <- distance(u1.otu.rel)
+u1.otu.pcoa <- pcoa(u1.otu.dist)
+u1.otu.pcoa.points <- pcoa.points(u1.otu.pcoa)
+u1.otu.map <- pcoa.map(u1.otu.pcoa.points, blodgett_data)
+variance(u1.otu.pcoa, 1)
+variance(u1.otu.pcoa, 2)
+pcoa.plot.disturbancedepth(u1.otu.map, x_col = pcoa1, y_col = pcoa2, color_col= Disturbance, shape_col = Depth, x_label = "39.27% Variance Explained", y_label = "14.97% Variance Explained", title = "U1 Plot Virome", filename = "U1_blodgett_disturbancedepth.pdf")
+pcoa.plot.disturbance(u1.otu.map, x_col = pcoa1, y_col = pcoa2, color_col= Disturbance, shape_col = Date, x_label = "39.27% Variance Explained", y_label = "14.97% Variance Explained", title = "U1 Plot Viromes", filename = "U1_blodgett_disturbance.pdf")
+# run PERMANOVAs
+variables <- c("Disturbance", "Depth", "Date", "Treatment")
+u1.adonis.results <- run_adonis(variables, u1.otu.dist, u1.otu.map)
+u1.adonis.table <- do.call(rbind, u1.adonis.results)
+
+```
+
+# Richness
+```{r}
+Richness <- p.map %>%
+  ggplot(aes(x = factor(Date, level = burn_date_order), y = Richness, fill = factor(Depth, level = depth_order))) +
+  annotate('rect', xmin = -Inf, xmax = 2.5, ymin = -Inf, ymax = Inf, fill = 'palegreen', alpha = 0.5) +
+  geom_boxplot(outlier.shape=NA) +
+  geom_point(aes(group = interaction(Depth, Date)),
+             position = position_dodge(width = 0.75),
+             size = 0.5) +
+  xlab("Time") +
+  ylab("Richness (# of vOTUs)") +
+  theme_bw() +
+  theme(axis.title = element_text(size = 20)) +
+  theme(legend.position = "bottom", legend.text = element_text(size=20), legend.title = element_text(size=20)) +
+  theme(axis.text = element_text(size = 16)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_manual(name = "Depth", 
+                    values = depth_colors) +
+  facet_wrap(~ Treatment)
+
+Richness + theme(strip.text = element_text(size=14))
+ggsave("Blodgett_Richness.pdf", width = 200, height = 120, units = "mm", dpi = 500)
+```
+
+# Identifying Heat Tolerant Contigs in Blodgett Data
+```{r}
+otu
+blodgett_contigs <- rownames(otu)
+blodgett_all_contigs <- data.frame(OTU = blodgett_contigs, Source = "Blodgett_All")
+tolerant_contigs=readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch1SoilHeating/R_Figures/rds/heat_tolerant_contigs.RDS")
+# these are the heat tolerant contigs that are found as they are originally named in the Blodgett data
+merge_contigs <- merge(blodgett_all_contigs, tolerant_contigs, by = "OTU")
+# these are the contigs that are considered heat tolerant but maybe got renamed because it clustered under another contig from the prescribed burn study which was a better representative
+renamed_contigs <- anti_join(tolerant_contigs, merge_contigs, by = "OTU")
+OTU <- renamed_contigs$OTU
+writeLines(as.character(OTU), "renamed_contigs.txt")
+
+cdhit_clusters <- read.csv("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/input data/clustered_all_new.csv", header = TRUE, sep = ",")
+
+repeats <- cdhit_clusters$OTU[duplicated(cdhit_clusters$OTU)]
+
+# this is a dataframe showing what those heat tolerant contigs got renamed to under this analysis
+cluster_contig_names <- merge(renamed_contigs, cdhit_clusters, by.x = "OTU", by.y = "OTU", all.x = TRUE)
+
+# Create the complete list of heat-tolerant contigs (with renamed ones) so that I can assign these contigs a value and then find their abundance in samples ??
+blodgett_renamed <- select(cluster_contig_names, -OTU)
+colnames(blodgett_renamed)[2] <- "OTU"
+blodgett_original <- subset(merge_contigs, select = -Source)
+blodgett_heat_tolerant <- rbind(blodgett_renamed, blodgett_original)
+
+saveRDS(blodgett_heat_tolerant, "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/blodgett_heat_tolerant.RDS")
+
+
+unique_all <- unique(blodgett_all_contigs$OTU)
+unique_heat <- unique(blodgett_heat_tolerant$OTU)
+
+all_otu_in_df2 <- all(unique_heat %in% unique_all)
+
+if (all_otu_in_df2) {
+  print("All OTU IDs in dataframe 1 appear in dataframe 2.")
+} else {
+  print("Not all OTU IDs in dataframe 1 appear in dataframe 2.")
+}
+
+
+#something is wrong here......
+duplicates <- blodgett_heat_tolerant$OTU[duplicated(blodgett_heat_tolerant$OTU)]
+duplicate_rows <- blodgett_heat_tolerant[blodgett_heat_tolerant$OTU %in% duplicates, ]
+
+# cool, now what...
+# merge dataframes to tag each OTU as heat tolerant or not
+trendgroup <- merge(blodgett_all_contigs, blodgett_heat_tolerant, by = "OTU", all.x = TRUE)
+```
+
+# HOST PREDICTION
+```{r}
+# Prep file in excel (text to column wizard under data tab to separate out taxonomy)
+iphop.genus <- read.csv("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/input data/all_Host_prediction_to_genus_m90.csv")
+iphop.filter <- iphop.genus %>%
+  group_by(Virus) %>%
+  filter(Confidence.score == max(Confidence.score)) %>%
+  ungroup()
+colnames(iphop.filter)[colnames(iphop.filter) == "Virus"] <- "OTU"
+
+# to determine if there are duplicates
+length(unique(iphop.filter$OTU))
+# remove exact duplicates
+iphop.uniq <- iphop.filter %>%
+  distinct()
+# to investigate the other duplicates use this and keep repeating until all duplicates are taken care of
+duplicates <- iphop.uniq %>% filter(duplicated(OTU) | duplicated(OTU, fromLast = TRUE))
+# remove duplicates that are the same except for different HostGenus and change that value to "mixed"
+iphop.uniq <- iphop.uniq %>%
+  group_by(OTU) %>%
+  mutate(HostGenus = ifelse(n_distinct(HostGenus) > 1, "mixed", HostGenus)) %>%
+  ungroup()
+# remove duplicates that are the same except for different HostFamily and change that value to "mixed"
+iphop.uniq <- iphop.uniq %>%
+  group_by(OTU) %>%
+  mutate(HostFamily = ifelse(n_distinct(HostFamily) > 1, "mixed", HostFamily)) %>%
+  ungroup()
+# remove duplicates that are the same except for different HostOrder and change that value to "mixed"
+iphop.uniq <- iphop.uniq %>%
+  group_by(OTU) %>%
+  mutate(HostOrder = ifelse(n_distinct(HostOrder) > 1, "mixed", HostOrder)) %>%
+  ungroup()
+# remove duplicates that are the same except for different HostClass and change that value to "mixed"
+iphop.uniq <- iphop.uniq %>%
+  group_by(OTU) %>%
+  mutate(HostClass = ifelse(n_distinct(HostClass) > 1, "mixed", HostClass)) %>%
+  ungroup()
+# remove duplicates that are the same except for different HostPhylum and change that value to "mixed"
+iphop.uniq <- iphop.uniq %>%
+  group_by(OTU) %>%
+  mutate(HostPhylum = ifelse(n_distinct(HostPhylum) > 1, "mixed", HostPhylum)) %>%
+  ungroup()
+# remove duplicates that are the same except for different HostDomain and change that value to "mixed"
+iphop.uniq <- iphop.uniq %>%
+  group_by(OTU) %>%
+  mutate(HostDomain = ifelse(n_distinct(HostDomain) > 1, "mixed", HostDomain)) %>%
+  ungroup()
+# remove duplicates that are the same except for different List.of.methods and change that value to "mixed"
+iphop.uniq <- iphop.uniq %>%
+  group_by(OTU) %>%
+  mutate(List.of.methods = ifelse(n_distinct(List.of.methods) > 1, "mixed", List.of.methods)) %>%
+  ungroup()
+# remove exact duplicates
+iphop.uniq <- iphop.uniq %>%
+  distinct()
+
+#create dataframe with just OTU and phylum from iphop
+iphop.phylum <- iphop.uniq[, c("OTU", "HostPhylum")]
+```
+# whole dataset (2021+2022)
+```{r}
+# name row.names of otu.rel
+otu.rel.otu <- otu.rel %>%
+  rownames_to_column(var = "OTU")
+otu.rel.phylum <- merge(iphop.phylum, otu.rel.otu, by = "OTU", all.y = TRUE)
+
+# replace NA Host Phylum with "unknown"
+otu.rel.phylum <- otu.rel.phylum %>% mutate(HostPhylum = ifelse(is.na(HostPhylum), "Unknown", HostPhylum))
+# remove OTU column (maybe not)
+otu.rel.phylum <- otu.rel.phylum %>% select(-OTU) 
+otu.phylum.long <- pivot_longer(otu.rel.phylum, cols=2:146, names_to = "ID", values_to = "RelAbd")
+otu.phylum.stack <- group_by(otu.phylum.long, HostPhylum, ID) %>%
+  summarize(RelAbd=sum(RelAbd))
+otu.phylum.stack <- otu.phylum.stack %>%
+  group_by(HostPhylum) %>%
+  mutate(NewHostPhylum = ifelse(all(RelAbd < 0.001), 'Other', HostPhylum)) %>%
+  ungroup()
+
+# Prep data frame for plotting
+otu.phylum.map <- merge(otu.phylum.stack, blodgett_data, by="ID")
+otu.phylum.map <- otu.phylum.map[otu.phylum.map$NewHostPhylum != "Unknown", ]
+
+# Plot
+hostphylum <- ggplot(otu.phylum.map, aes(x=ID, y=RelAbd, fill=NewHostPhylum))+
+    labs(x="Sample ID", 
+       y ="Relative Abundance",
+       title = "Blodgett vOTU Host Prediction by Sample")+
+  geom_bar(stat="identity")+
+  scale_fill_manual(values=collapsed_phylum_colors) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+hostphylum <- ggsave("allhostblodgett_phylum.pdf", width = 200, height = 150, units = "mm", dpi = 500)
+```
+# Prescribed burn only(2021)
+```{r}
+# name row.names of p.otu.rel
+p.otu.rel.otu <- p.otu.rel %>%
+  rownames_to_column(var = "OTU")
+p.otu.rel.phylum <- merge(iphop.phylum, p.otu.rel.otu, by = "OTU", all.y = TRUE)
+
+# replace NA Host Phylum with "unknown"
+p.otu.rel.phylum <- p.otu.rel.phylum %>% mutate(HostPhylum = ifelse(is.na(HostPhylum), "Unknown", HostPhylum))
+# remove OTU column (maybe not)
+p.otu.rel.phylum <- p.otu.rel.phylum %>% select(-OTU) 
+p.otu.phylum.long <- pivot_longer(p.otu.rel.phylum, cols=2:92, names_to = "ID", values_to = "RelAbd")
+p.otu.phylum.stack <- group_by(p.otu.phylum.long, HostPhylum, ID) %>%
+  summarize(RelAbd=sum(RelAbd))
+p.otu.phylum.stack <- p.otu.phylum.stack %>%
+  group_by(HostPhylum) %>%
+  mutate(NewHostPhylum = ifelse(all(RelAbd < 0.001), 'Other', HostPhylum)) %>%
+  ungroup()
+
+# Prep data frame for plotting
+p.otu.phylum.map <- merge(p.otu.phylum.stack, p.map, by="ID")
+p.otu.phylum.map <- p.otu.phylum.map[p.otu.phylum.map$NewHostPhylum != "Unknown", ]
+p.otu.phylum.map <- p.otu.phylum.map %>% 
+  mutate(Order = case_when(
+    Date == "4/5/2021" ~ "T1",
+    Date == "4/18/2021" ~ "T2", 
+    Date == "4/27/2021" ~ "T3", 
+    Date == "5/8/2021" ~ "T4")) %>%
+  arrange(Order) %>%
+  mutate(TreatRep = paste(Order, SubPlot, Depth)) %>%
+  arrange(TreatRep)
+
+# Plot
+hostphylum <- ggplot(p.otu.phylum.map, aes(x=TreatRep, y=RelAbd, fill=NewHostPhylum))+
+    labs(x="Sample ID", 
+       y ="Relative Abundance",
+       title = "Prescribed Burn vOTU Host Prediction by Sample")+
+  geom_bar(stat="identity")+
+  scale_fill_manual(values=collapsed_phylum_colors) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+hostphylum <- ggsave("2021hostblodgett_phylum.pdf", width = 300, height = 150, units = "mm", dpi = 500)
+```
+# Prescribed burn only - treatment plots(2021)
+```{r}
+# name row.names of b.otu.rel
+b.otu.rel.otu <- b.otu.rel %>%
+  rownames_to_column(var = "OTU")
+b.otu.rel.phylum <- merge(iphop.phylum, b.otu.rel.otu, by = "OTU", all.y = TRUE)
+
+# replace NA Host Phylum with "unknown"
+b.otu.rel.phylum <- b.otu.rel.phylum %>% mutate(HostPhylum = ifelse(is.na(HostPhylum), "Unknown", HostPhylum))
+# remove OTU column (maybe not)
+b.otu.rel.phylum <- b.otu.rel.phylum %>% select(-OTU) 
+b.otu.phylum.long <- pivot_longer(b.otu.rel.phylum, cols=2:59, names_to = "ID", values_to = "RelAbd")
+b.otu.phylum.stack <- group_by(b.otu.phylum.long, HostPhylum, ID) %>%
+  summarize(RelAbd=sum(RelAbd))
+b.otu.phylum.stack <- b.otu.phylum.stack %>%
+  group_by(HostPhylum) %>%
+  mutate(NewHostPhylum = ifelse(all(RelAbd < 0.001), 'Other', HostPhylum)) %>%
+  ungroup()
+
+# Prep data frame for plotting
+b.otu.phylum.map <- merge(b.otu.phylum.stack, b.map, by="ID")
+b.otu.phylum.map <- b.otu.phylum.map[b.otu.phylum.map$NewHostPhylum != "Unknown", ]
+
+b.otu.phylum.map <- b.otu.phylum.map %>% 
+  mutate(Order = case_when(
+    Date == "4/5/2021" ~ "T1",
+    Date == "4/18/2021" ~ "T2", 
+    Date == "4/27/2021" ~ "T3", 
+    Date == "5/8/2021" ~ "T4")) %>%
+  arrange(Order) %>%
+  mutate(TreatRep = paste(Order, SubPlot, Depth)) %>%
+  arrange(TreatRep)
+
+unique(b.otu.phylum.map$NewHostPhylum)
+
+# Plot
+hostphylum <- ggplot(b.otu.phylum.map, aes(x=TreatRep, y=RelAbd, fill=NewHostPhylum))+
+    labs(x="Sample ID", 
+       y ="Relative Abundance",
+       title = "Prescribed Burn - Treatment Plots - vOTU Host Prediction by Sample")+
+  geom_bar(stat="identity")+
+  scale_fill_manual(values=collapsed_phylum_colors) +
+  geom_vline(xintercept = c(16.5, 32.5, 47.5), linetype = "solid", color = "black", size = 0.75)+
+  theme_bw() +
+  
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5),
+        legend.position = "bottom")
+hostphylum <- ggsave("2021burnhostblodgett_phylum.pdf", width = 250, height = 150, units = "mm", dpi = 500)
+```
+
+# Prescribed burn only - control plots(2021)
+```{r}
+# name row.names of pu.otu.rel
+pu.otu.rel.otu <- pu.otu.rel %>%
+  rownames_to_column(var = "OTU")
+pu.otu.rel.phylum <- merge(iphop.phylum, pu.otu.rel.otu, by = "OTU", all.y = TRUE)
+
+# replace NA Host Phylum with "unknown"
+pu.otu.rel.phylum <- pu.otu.rel.phylum %>% mutate(HostPhylum = ifelse(is.na(HostPhylum), "Unknown", HostPhylum))
+# remove OTU column (maybe not)
+pu.otu.rel.phylum <- pu.otu.rel.phylum %>% select(-OTU) 
+pu.otu.phylum.long <- pivot_longer(pu.otu.rel.phylum, cols=2:33, names_to = "ID", values_to = "RelAbd")
+pu.otu.phylum.stack <- group_by(pu.otu.phylum.long, HostPhylum, ID) %>%
+  summarize(RelAbd=sum(RelAbd))
+pu.otu.phylum.stack <- pu.otu.phylum.stack %>%
+  group_by(HostPhylum) %>%
+  mutate(NewHostPhylum = ifelse(all(RelAbd < 0.001), 'Other', HostPhylum)) %>%
+  ungroup()
+
+# Prep data frame for plotting
+pu.otu.phylum.map <- merge(pu.otu.phylum.stack, pu.map, by="ID")
+pu.otu.phylum.map <- pu.otu.phylum.map[pu.otu.phylum.map$NewHostPhylum != "Unknown", ]
+
+pu.otu.phylum.map <- pu.otu.phylum.map %>% 
+  mutate(Order = case_when(
+    Date == "4/5/2021" ~ "T1",
+    Date == "4/18/2021" ~ "T2", 
+    Date == "4/27/2021" ~ "T3", 
+    Date == "5/8/2021" ~ "T4")) %>%
+  arrange(Order) %>%
+  mutate(TreatRep = paste(Order, SubPlot, Depth)) %>%
+  arrange(TreatRep)
+
+unique(pu.otu.phylum.map$NewHostPhylum)
+
+# Plot
+hostphylum <- ggplot(pu.otu.phylum.map, aes(x=TreatRep, y=RelAbd, fill=NewHostPhylum))+
+    labs(x="Sample ID", 
+       y ="Relative Abundance",
+       title = "Prescribed Burn - Control Plots - vOTU Host Prediction by Sample")+
+  geom_bar(stat="identity")+
+  scale_fill_manual(values=collapsed_phylum_colors) +
+  geom_vline(xintercept = c(8.5, 16.5, 24.5), linetype = "solid", color = "black", size = 0.75)+
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+hostphylum <- ggsave("2021controlhostblodgett_phylum.pdf", width = 200, height = 150, units = "mm", dpi = 500)
+```
+# Prescribed burn only - after burn
+```{r}
+# name row.names of ab.otu.rel
+ab.otu.rel.otu <- ab.otu.rel %>%
+  rownames_to_column(var = "OTU")
+ab.otu.rel.phylum <- merge(iphop.phylum, ab.otu.rel.otu, by = "OTU", all.y = TRUE)
+
+# replace NA Host Phylum with "unknown"
+ab.otu.rel.phylum <- ab.otu.rel.phylum %>% mutate(HostPhylum = ifelse(is.na(HostPhylum), "Unknown", HostPhylum))
+# remove OTU column (maybe not)
+ab.otu.rel.phylum <- ab.otu.rel.phylum %>% select(-OTU) 
+ab.otu.phylum.long <- pivot_longer(ab.otu.rel.phylum, cols=2:44, names_to = "ID", values_to = "RelAbd")
+ab.otu.phylum.stack <- group_by(ab.otu.phylum.long, HostPhylum, ID) %>%
+  summarize(RelAbd=sum(RelAbd))
+ab.otu.phylum.stack <- ab.otu.phylum.stack %>%
+  group_by(HostPhylum) %>%
+  mutate(NewHostPhylum = ifelse(all(RelAbd < 0.001), 'Other', HostPhylum)) %>%
+  ungroup()
+
+# Prep data frame for plotting
+ab.otu.phylum.map <- merge(ab.otu.phylum.stack, ab.map, by="ID")
+ab.otu.phylum.map <- ab.otu.phylum.map[ab.otu.phylum.map$NewHostPhylum != "Unknown", ]
+
+ab.otu.phylum.map <- ab.otu.phylum.map %>% 
+  mutate(Order = case_when(
+    Date == "4/5/2021" ~ "T1",
+    Date == "4/18/2021" ~ "T2", 
+    Date == "4/27/2021" ~ "T3", 
+    Date == "5/8/2021" ~ "T4")) %>%
+  arrange(Order) %>%
+  mutate(TreatRep = paste(Order, SubPlot, Depth)) %>%
+  arrange(TreatRep)
+
+unique(ab.otu.phylum.map$NewHostPhylum)
+
+# Plot
+hostphylum <- ggplot(ab.otu.phylum.map, aes(x=TreatRep, y=RelAbd, fill=NewHostPhylum))+
+    labs(x="Sample ID", 
+       y ="Relative Abundance",
+       title = "Prescribed Burn - After Burn - vOTU Host Prediction by Sample")+
+  annotate('rect', xmin = 14.5, xmax = 23.5, ymin = -Inf, ymax = Inf, fill = 'lightgray', alpha = 0.5) +
+  annotate('rect', xmin = 35.5, xmax = Inf, ymin = -Inf, ymax = Inf, fill = 'lightgray', alpha = 0.5) +
+  geom_bar(stat="identity")+
+  scale_fill_manual(values=collapsed_phylum_colors) +
+  geom_vline(xintercept = c(23.5), linetype = "solid", color = "black", size = 0.75)+
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+hostphylum <- ggsave("2021afterburnhostblodgett_phylum.pdf", width = 200, height = 150, units = "mm", dpi = 500)
+```
+
+
+# Determining # of unique vOTUs in each depth and in both depths in each plot over time
+```{r}
+p.pa <- p.otu.rel != 0
+dates <- unique(p.map$Date)
+subplots <- unique(p.map$SubPlot)
+T1 <- "4/5/2021"
+T2 <- "4/18/2021"
+T3 <- "4/27/2021"
+T4 <- "5/8/2021"
+
+#T1
+filtered_map <- p.map[p.map$Date == T1, ]
+subplot_groups <- split(filtered_map$ID, filtered_map$SubPlot)
+sample_pairs <- list()
+sample1 <- c()  
+sample2 <- c()
+subplot_labels <- c()
+for (subplot_group in subplot_groups) {
+  pairs <- combn(subplot_group, 2)
+  for (i in 1:ncol(pairs)){
+    pair_subplot_label <- filtered_map$SubPlot[which(filtered_map$ID == pairs[1, i])]
+  sample1 <- c(sample1, pairs[1, i])
+  sample2 <- c(sample2, pairs[2, i])
+  subplot_labels <- c(subplot_labels, pair_subplot_label)
+  }
+}  
+
+sample_pairs <- data.frame(Bottom = sample1, Top = sample2, SubPlot = subplot_labels)
+T1results <- data.frame(
+  Pair = character(),
+  SubPlot = character(),
+  Unique_to_bottom = integer(),
+  Unique_to_top = integer(),
+  Shared = integer(),
+  stringsAsFactors = FALSE
+)
+for (i in 1:nrow(sample_pairs)) {
+  pair <- sample_pairs[i, ]
+  bottom_sample <- pair$Bottom
+  top_sample <- pair$Top
+  bottom_data <- p.pa[, bottom_sample]
+  top_data <- p.pa[, top_sample]
+  unique_to_bottom <- length(setdiff(which(bottom_data), which(top_data)))
+  unique_to_top <- length(setdiff(which(top_data), which(bottom_data)))
+  shared <- length(intersect(which(bottom_data), which(top_data)))
+  T1results[i, ] <- list(
+    Pair = paste(bottom_sample, "-", top_sample),
+    SubPlot = pair$SubPlot,
+    Unique_to_bottom = unique_to_bottom,
+    Unique_to_top = unique_to_top, 
+    Shared = shared
+  )
+}
+
+T1results$Date <- "4/5/2021"
+
+#T2
+filtered_map <- p.map[p.map$Date == T2, ]
+subplot_groups <- split(filtered_map$ID, filtered_map$SubPlot)
+sample_pairs <- list()
+sample1 <- c()  
+sample2 <- c()
+subplot_labels <- c()
+for (subplot_group in subplot_groups) {
+  pairs <- combn(subplot_group, 2)
+  for (i in 1:ncol(pairs)){
+    pair_subplot_label <- filtered_map$SubPlot[which(filtered_map$ID == pairs[1, i])]
+  sample1 <- c(sample1, pairs[1, i])
+  sample2 <- c(sample2, pairs[2, i])
+  subplot_labels <- c(subplot_labels, pair_subplot_label)
+  }
+}  
+
+sample_pairs <- data.frame(Bottom = sample1, Top = sample2, SubPlot = subplot_labels)
+T2results <- data.frame(
+  Pair = character(),
+  SubPlot = character(),
+  Unique_to_bottom = integer(),
+  Unique_to_top = integer(),
+  Shared = integer(),
+  stringsAsFactors = FALSE
+)
+for (i in 1:nrow(sample_pairs)) {
+  pair <- sample_pairs[i, ]
+  bottom_sample <- pair$Bottom
+  top_sample <- pair$Top
+  bottom_data <- p.pa[, bottom_sample]
+  top_data <- p.pa[, top_sample]
+  unique_to_bottom <- length(setdiff(which(bottom_data), which(top_data)))
+  unique_to_top <- length(setdiff(which(top_data), which(bottom_data)))
+  shared <- length(intersect(which(bottom_data), which(top_data)))
+  T2results[i, ] <- list(
+    Pair = paste(bottom_sample, "-", top_sample),
+    SubPlot = pair$SubPlot,
+    Unique_to_bottom = unique_to_bottom,
+    Unique_to_top = unique_to_top, 
+    Shared = shared
+  )
+}
+
+T2results$Date <- "4/18/2021"
+
+# T3
+filtered_map <- p.map[p.map$Date == T3, ]
+sample_pairs <- list()
+sample1 <- c()  
+sample2 <- c()
+subplot_labels <- c()
+filtered_map <- filtered_map[filtered_map$ID != "BDV22", ]
+subplot_groups <- split(filtered_map$ID, filtered_map$SubPlot)
+for (subplot_group in subplot_groups) {
+  pairs <- combn(subplot_group, 2)
+  for (i in 1:ncol(pairs)){
+    pair_subplot_label <- filtered_map$SubPlot[which(filtered_map$ID == pairs[1, i])]
+  sample1 <- c(sample1, pairs[1, i])
+  sample2 <- c(sample2, pairs[2, i])
+  subplot_labels <- c(subplot_labels, pair_subplot_label)
+  }
+}  
+
+sample_pairs <- data.frame(Bottom = sample1, Top = sample2, SubPlot = subplot_labels)
+T3results <- data.frame(
+  Pair = character(),
+  SubPlot = character(),
+  Unique_to_bottom = integer(),
+  Unique_to_top = integer(),
+  Shared = integer(),
+  stringsAsFactors = FALSE
+)
+for (i in 1:nrow(sample_pairs)) {
+  pair <- sample_pairs[i, ]
+  bottom_sample <- pair$Bottom
+  top_sample <- pair$Top
+  bottom_data <- p.pa[, bottom_sample]
+  top_data <- p.pa[, top_sample]
+  unique_to_bottom <- length(setdiff(which(bottom_data), which(top_data)))
+  unique_to_top <- length(setdiff(which(top_data), which(bottom_data)))
+  shared <- length(intersect(which(bottom_data), which(top_data)))
+  T3results[i, ] <- list(
+    Pair = paste(bottom_sample, "-", top_sample),
+    SubPlot = pair$SubPlot,
+    Unique_to_bottom = unique_to_bottom,
+    Unique_to_top = unique_to_top, 
+    Shared = shared
+  )
+}
+
+T3results$Date <- "4/27/2021"
+
+# T4
+filtered_map <- p.map[p.map$Date == T4, ]
+sample_pairs <- list()
+sample1 <- c()  
+sample2 <- c()
+subplot_labels <- c()
+subplot_groups <- split(filtered_map$ID, filtered_map$SubPlot)
+for (subplot_group in subplot_groups) {
+  pairs <- combn(subplot_group, 2)
+  for (i in 1:ncol(pairs)){
+    pair_subplot_label <- filtered_map$SubPlot[which(filtered_map$ID == pairs[1, i])]
+  sample1 <- c(sample1, pairs[1, i])
+  sample2 <- c(sample2, pairs[2, i])
+  subplot_labels <- c(subplot_labels, pair_subplot_label)
+  }
+}  
+
+sample_pairs <- data.frame(Bottom = sample1, Top = sample2, SubPlot = subplot_labels)
+T4results <- data.frame(
+  Pair = character(),
+  SubPlot = character(),
+  Unique_to_bottom = integer(),
+  Unique_to_top = integer(),
+  Shared = integer(),
+  stringsAsFactors = FALSE
+)
+for (i in 1:nrow(sample_pairs)) {
+  pair <- sample_pairs[i, ]
+  bottom_sample <- pair$Bottom
+  top_sample <- pair$Top
+  bottom_data <- p.pa[, bottom_sample]
+  top_data <- p.pa[, top_sample]
+  unique_to_bottom <- length(setdiff(which(bottom_data), which(top_data)))
+  unique_to_top <- length(setdiff(which(top_data), which(bottom_data)))
+  shared <- length(intersect(which(bottom_data), which(top_data)))
+  T4results[i, ] <- list(
+    Pair = paste(bottom_sample, "-", top_sample),
+    SubPlot = pair$SubPlot,
+    Unique_to_bottom = unique_to_bottom,
+    Unique_to_top = unique_to_top, 
+    Shared = shared
+  )
+}
+
+T4results$Date <- "5/8/2021"
+
+# combine all timepoints
+depth_results <- rbind(T1results, T2results, T3results, T4results)
+colnames(depth_results)[colnames(depth_results) == "Unique_to_bottom"] <- "Bottom"
+colnames(depth_results)[colnames(depth_results) == "Unique_to_top"] <- "Top"
+
+depth_results_long <- pivot_longer(depth_results, cols=3:5, names_to= "Depth", values_to = "vOTUs")
+depth_order <- c('Top', 'Shared', 'Bottom')
+date_order <- c('4/5/2021', '4/18/2021', '4/27/2021', '5/8/2021')
+
+depth_contigs <- ggplot(depth_results_long, aes(x=factor(Date, level=date_order), y=vOTUs, fill = factor(Depth, level=depth_order)))+
+  geom_bar(stat="identity", position="stack")+
+  labs(x="Date", 
+       y ="Number of vOTUs",
+       title = "Number of Unique vOTUs by Depth")+
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  facet_wrap(~SubPlot)
+
+depth_contigs <- depth_contigs + labs(fill = "Depth")
+depth_contigs <- ggsave("depth_contigs.pdf", width = 200, height = 150, units = "mm", dpi = 500)
+
+depth_contigs_percent <- ggplot(depth_results_long, aes(x=factor(Date, level=date_order), y=vOTUs, fill = factor(Depth, level=depth_order)))+
+  geom_bar(stat="identity", position="fill")+
+  labs(x="Date", 
+       y ="Percent of Total Number of Unique vOTUs",
+       title = "Relative Spread of Unique vOTUs by Depth")+
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  scale_y_continuous(labels = scales::percent)+
+  facet_wrap(~SubPlot)
+
+depth_contigs_percent <- depth_contigs_percent + labs(fill = "Depth")
+depth_contigs_percent <- ggsave("depth_contigs_percent.pdf", width = 200, height = 150, units = "mm", dpi = 500)
+
+# quality control
+u2a.pa <- p.pa[, c("USV9", "UDV9")]
+u2a.pa <- as.data.frame(u2a.pa)
+top.u2a.pa <- u2a.pa[u2a.pa$USV9 & !u2a.pa$UDV9, ]
+bottom.u2a.pa <- u2a.pa[!u2a.pa$USV9 & u2a.pa$UDV9, ]
+```
+
