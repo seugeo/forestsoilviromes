@@ -92,10 +92,27 @@ blodgett_data <- rbind(heatmetadata, fieldmetadata)
 # make sure IDs are in the same order as the column names of the OTU dataframe
 column_names <- names(otu)
 blodgett_data <- blodgett_data[match(column_names, blodgett_data$ID), ]
+
+# add environmental cluster data
+k_cluster_env=readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/k_cluster_env.RDS")
+# change column name of SampleID to ID
+colnames(k_cluster_env)[colnames(k_cluster_env) == "SampleID"] <- "ID"
+blodgett_data = left_join(blodgett_data, k_cluster_env, by="ID")
+blodgett_data <- blodgett_data %>%
+  mutate(Cluster = as.character(Cluster))
+
 saveRDS(blodgett_data, "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/blodgett_all_metadata.RDS")
 
 # DNA Yields
 blodgett_dnayields=read_delim("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/input data/blodgettSSSA.tsv", delim = "\t", col_names = TRUE)
+blodgett_dnayields <- blodgett_dnayields %>%
+  mutate(Date = case_when(
+    Date == "4/5/2021" ~ "4/5/2021",
+    Date == "4/18/2021" ~ "4/18/2021", 
+    Date == "4/27/2021" ~ "4/27/2021", 
+    Date == "5/8/2021" ~ "5/8/2021",
+    Date == "6/21/2021" ~ "6/20/2021", 
+    Date == "4/18/2022" ~ "4/18/2022"))
 saveRDS(blodgett_dnayields, "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/blodgett_dnayields.RDS")
 
 ```
@@ -111,6 +128,9 @@ tax_all$Order[is.na(tax_all$Order)] <- "Unknown Order"
 # remove mitochondria and chloroplast
 criteria <- !(tax_all$Family == "Mitochondria" | tax_all$Order == "Chloroplast")
 tax_filtered <- tax_all[criteria, ]
+# change Chloroflexi to Chloroflexota
+tax_filtered <- tax_filtered %>%
+  mutate(Phylum = ifelse(Phylum == "Chloroflexi", "Chloroflexota", Phylum))
 
 saveRDS(tax_filtered, "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/tax_filtered.RDS")
 
@@ -210,6 +230,15 @@ blodgett_map <- blodgett_map[order(blodgett_map$ID), ]
 
 # make sure IDs are identical in abundance and metadata tables
 identical(colnames(blodgett.asv), blodgett_map$ID)
+
+# add environmental cluster data
+k_cluster_env_16S <- k_cluster_env %>%
+  mutate(ID = gsub("V", "M", ID)) %>%
+  mutate(ID = ifelse(ID == "UDM24D", "UDM24", ID))
+colnames(k_cluster_env_16S)[colnames(k_cluster_env_16S) == "ID"] <- "MapID"
+blodgett_map = left_join(blodgett_map, k_cluster_env_16S, by="MapID")
+blodgett_map <- blodgett_map %>%
+  mutate(Cluster = as.character(Cluster))
 
 saveRDS(blodgett_map, "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/blodgett_map.RDS")
 

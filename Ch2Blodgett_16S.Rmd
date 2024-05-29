@@ -21,11 +21,10 @@ blodgett.asv <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett
 tax_filtered <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/tax_filtered.RDS")
 blodgett_map <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/blodgett_map.RDS")
 ```
-
 # PCoA: ALL DATA (2021 + 2022) ... do this before taxonomy 
 ```{r}
 # create rarefaction curve to determine rarefaction threshold for abundance table
-asv <- subset(blodgett.asv, select = -OTU_ID)
+# asv <- subset(blodgett.asv, select = -OTU_ID)
 # don't need to run the below code every time, only the first time to figure out what to rarefy to
 #asv.rarecurve <- rarecurve(t(asv), step = 100) 
 #x <- map_dfr(asv.rarecurve, bind_rows) %>% bind_cols(colnames(asv),.)
@@ -33,7 +32,7 @@ asv <- subset(blodgett.asv, select = -OTU_ID)
 #row.names(x) <- x[, 1]
 
 #based on x dataframe, choose sample size to rarefy to
-asv.rare <- t(rrarefy(t(asv), sample = 18600))
+asv.rare <- t(rrarefy(t(blodgett.asv), sample = 18600))
 
 # remove FIRE104 from abundance table (below rarefaction threshold)
 asv.rare <- subset(asv.rare, select = -FIRE104)
@@ -223,6 +222,7 @@ variance(p.asv.pcoa, 1)
 variance(p.asv.pcoa, 2)
 
 pcoa.plot.p.disturbance(p.asv.map, x_col = pcoa1, y_col = pcoa2, color_col= Disturbance, shape_col = Date, x_label = "24.92% Variance Explained", y_label = "11.88% Variance Explained", title = "2021 Blodgett 16S rRNA ASV Profile", filename = "2021_blodgett_ASV_pcoa_disturbance.pdf")
+pcoa.disturbance.cluster(p.asv.map, x_col = pcoa1, y_col = pcoa2, color_col= Cluster, shape_col = Disturbance, x_label = "24.92% Variance Explained", y_label = "11.88% Variance Explained", title = "2021 Blodgett 16S rRNA ASV Profile", filename = "2021_blodgett_ASV_pcoa_cluster.pdf")
 ```
 # 0-3 cm (s - surface)
 ```{r}
@@ -322,6 +322,23 @@ p_phylum <- ggplot(p.phylum.map, aes(x=TimeSubPlot, y=counts, fill=factor(NewPhy
         legend.position = "none")
 p_phylum
 p_phylum <- ggsave("p_phylum.pdf", width = 350, height = 100, units = "mm", dpi = 500)
+
+# cluster plot
+p.phylum.map <- p.phylum.map %>% 
+  mutate(ClusterTime = paste(TimePoint, "-", SubPlot, "-", Cluster))
+
+pk_phylum <- ggplot(p.phylum.map, aes(x=ClusterTime, y=counts, fill=factor(NewPhylum, level=collapsed_phyla_order)))+
+    labs(x="Sample", 
+       y ="Counts",
+       title = "Prescribed Burn 16S rRNA ASV Profile")+
+  geom_bar(stat="identity", position = "fill", width = 0.75)+
+  geom_vline(xintercept = c(12.5, 24.5, 36.5, 48.5), linetype = "solid", color = "black", size = 0.75)+
+  scale_fill_manual(values=collapsed_phylum_colors) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5),
+        legend.position = "none")
+pk_phylum <- ggsave("pk_phylum.pdf", width = 350, height = 100, units = "mm", dpi = 500)
+
 ```
 # 0-3 cm (s - surface)
 ```{r}
@@ -355,7 +372,7 @@ s.phylum.map <- merge(s.phylum.long, s_map, by="ID")
 s.phylum.map <- s.phylum.map %>%
   arrange(TimePoint)
 
-# Plot (I believe this would summarize both depths into each subplot)
+# Plot 
 s_phylum <- ggplot(s.phylum.map, aes(x=TimeSubPlot, y=counts, fill=factor(NewPhylum, level=collapsed_phyla_order)))+
     labs(x="Sample", 
        y ="Counts",
@@ -365,10 +382,33 @@ s_phylum <- ggplot(s.phylum.map, aes(x=TimeSubPlot, y=counts, fill=factor(NewPhy
   scale_fill_manual(values=collapsed_phylum_colors) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5),
-        legend.position = "none")
+        legend.position = "bottom")
 s_phylum
 s_phylum <- ggsave("s_phylum.pdf", width = 350, height = 100, units = "mm", dpi = 500)
+
+# cluster plot
+s.phylum.map <- s.phylum.map %>% 
+  mutate(ClusterTime = paste(TimePoint, "-", SubPlot, "-", Cluster))
+
+sk_phylum <- ggplot(s.phylum.map, aes(x=ClusterTime, y=counts, fill=factor(NewPhylum, level=collapsed_phyla_order)))+
+    labs(x="Sample", 
+       y ="Counts",
+       title = "0-3cm, Prescribed Burn 16S rRNA ASV Profile", fill = "Phylum")+
+  annotate('rect', xmin = 7.5, xmax = 11.5, ymin = -Inf, ymax = Inf, fill = 'lightgray', alpha = 0.75) +
+  annotate('rect', xmin = 19.5, xmax = 23.5, ymin = -Inf, ymax = Inf, fill = 'lightgray', alpha = 0.75) +
+  annotate('rect', xmin = 31.5, xmax = 35.5, ymin = -Inf, ymax = Inf, fill = 'lightgray', alpha = 0.75) +
+  annotate('rect', xmin = 41.5, xmax = 44.5, ymin = -Inf, ymax = Inf, fill = 'lightgray', alpha = 0.75) +
+  annotate('rect', xmin = 51.5, xmax = Inf, ymin = -Inf, ymax = Inf, fill = 'lightgray', alpha = 0.75) +
+  geom_bar(stat="identity", position = "fill", width = 0.75)+
+  geom_vline(xintercept = c(11.5, 23.5, 35.5, 44.5), linetype = "solid", color = "black", size = 0.75)+
+  scale_fill_manual(values=collapsed_phylum_colors) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5),
+        legend.position = "none")
+sk_phylum <- ggsave("sk_phylum.pdf", width = 350, height = 100, units = "mm", dpi = 500)
 ```
+
+
 # 3-6 cm (d - deep)
 ```{r}
 # Join taxonomy and abundance data together
@@ -401,7 +441,7 @@ d.phylum.map <- merge(d.phylum.long, d_map, by="ID")
 d.phylum.map <- d.phylum.map %>%
   arrange(TimePoint)
 
-# Plot (I believe this would summarize both depths into each subplot)
+# Plot
 d_phylum <- ggplot(d.phylum.map, aes(x=TimeSubPlot, y=counts, fill=factor(NewPhylum, level=collapsed_phyla_order)))+
     labs(x="Sample", 
        y ="Counts",
@@ -414,7 +454,30 @@ d_phylum <- ggplot(d.phylum.map, aes(x=TimeSubPlot, y=counts, fill=factor(NewPhy
         legend.position = "none")
 d_phylum
 d_phylum <- ggsave("d_phylum.pdf", width = 350, height = 100, units = "mm", dpi = 500)
+
+# cluster plot
+d.phylum.map <- d.phylum.map %>% 
+  mutate(ClusterTime = paste(TimePoint, "-", SubPlot, "-", Cluster))
+
+dk_phylum <- ggplot(d.phylum.map, aes(x=ClusterTime, y=counts, fill=factor(NewPhylum, level=collapsed_phyla_order)))+
+    labs(x="Sample", 
+       y ="Counts",
+       title = "3-6cm, Prescribed Burn 16S rRNA ASV Profile", 
+       fill = "Phylum")+
+  annotate('rect', xmin = 8.5, xmax = 12.5, ymin = -Inf, ymax = Inf, fill = 'lightgray', alpha = 0.75) +
+  annotate('rect', xmin = 20.5, xmax = 24.5, ymin = -Inf, ymax = Inf, fill = 'lightgray', alpha = 0.75) +
+  annotate('rect', xmin = 32.5, xmax = 36.5, ymin = -Inf, ymax = Inf, fill = 'lightgray', alpha = 0.75) +
+  annotate('rect', xmin = 44.5, xmax = 48.5, ymin = -Inf, ymax = Inf, fill = 'lightgray', alpha = 0.75) +
+  annotate('rect', xmin = 56.5, xmax = Inf, ymin = -Inf, ymax = Inf, fill = 'lightgray', alpha = 0.75) +
+  geom_bar(stat="identity", position = "fill", width = 0.75)+
+  geom_vline(xintercept = c(12.5, 24.5, 36.5, 48.5), linetype = "solid", color = "black", size = 0.75)+
+  scale_fill_manual(values=collapsed_phylum_colors) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5),
+        legend.position = "none")
+dk_phylum <- ggsave("dk_phylum.pdf", width = 350, height = 100, units = "mm", dpi = 500)
 ```
+
 # control plots (c)
 ```{r}
 # Join taxonomy and abundance data together
@@ -507,4 +570,3 @@ b_phylum <- ggplot(b.phylum.map, aes(x=TimeSubPlot, y=counts, fill=factor(NewPhy
 b_phylum
 b_phylum <- ggsave("b_phylum.pdf", width = 350, height = 100, units = "mm", dpi = 500)
 ```
-

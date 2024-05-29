@@ -12,14 +12,16 @@ date: "2024-03-05"
   p_disturbance_order <- c('No', 'Yes_Burn')
   plot_colors <- c("turquoise3","turquoise4", "chocolate2", "burlywood", "darkorange4", "tomato3")
   plot_order <- c('U1', 'U2', 'B1', 'B2', 'B3', 'B4')
+  probe_colors <- c("#ffba00","#df4200","#aa0048","#800080")
+  probe_order <- c('Depth1', 'Depth2', 'Depth4', 'Depth6')
   date_shapes <- c(16,18,0,3,8)
   date_order <- c('4/5/2021', '4/18/2021', '4/27/2021', '5/8/2021', '4/18/2022')
   burn_date_order <- c('4/5/2021', '4/18/2021', '4/27/2021', '5/8/2021', '6/20/2021')
   depth_shapes <- c(16,17)
   depth_order <- c('0-3cm','3-6cm')
   depth_colors <- c("brown", "orange")
-  collapsed_phylum_colors <- c("Acidobacteriota" = "#7526C3", "Actinobacteriota" = "#75d644", "Bacteroidota" = "#FAE500", "Bdellovibrionota" = "#1CFEDA", "Chloroflexi" = "#2665A1", "Firmicutes" = "#2ead57", "Gemmatimonadota" = "#84530D", "Myxococcota" = "#FF942E", "Patescibacteria" = "#22CBFD", "Planctomycetota" =  "#fa4668", "Proteobacteria" = "#D78EFC", "Verrucomicrobiota" = "#FE9B95", "NA" = "gray30", "Other" = "darkgray")
-  collapsed_phyla_order <- c("Acidobacteriota", "Actinobacteriota", "Bacteroidota", "Bdellovibrionota", "Chloroflexi", "Firmicutes", "Gemmatimonadota", "Myxococcota", "Patescibacteria", "Planctomycetota", "Proteobacteria", "Verrucomicrobiota", "NA", "Other")
+  collapsed_phylum_colors <- c("Acidobacteriota" = "#7526C3", "Actinobacteriota" = "#75d644", "Altarchaeota" = "#F9D3D7","Bacteroidota" = "#FAE500", "Bdellovibrionota" = "#0026F9", "Chloroflexota" = "#2665A1", "Cyanobacteria" = "#1CFEDA", "Desulfobacterota" = "#6C328B", "Firmicutes" = "#2ead57", "Gemmatimonadota" = "#84530D", "Halobacteriota" = "#B6EBEF", "Methanobacteriota" = "#CBC279", "Myxococcota" = "#FF942E", "Nitrospirota" = "#909AFE", "Patescibacteria" = "#22CBFD", "Planctomycetota" =  "#fa4668", "Proteobacteria" = "#D78EFC", "Verrucomicrobiota" = "#FE9B95", "Other" = "darkgray")
+  collapsed_phyla_order <- c("Acidobacteriota", "Actinobacteriota", "Altarchaeota", "Bacteroidota", "Bdellovibrionota", "Chloroflexota", "Cyanobacteria", "Desulfobacterota", "Firmicutes", "Gemmatimonadota", "Halobacteriota", "Methanobacteriota", "Myxococcota", "Nitrospirota", "Patescibacteria", "Planctomycetota", "Proteobacteria", "Verrucomicrobiota", "Other")
   
 # DATA PREPARATION
 # CONVERT COLUMN TO ROWNAMES # make sure to put "" around col and name_values
@@ -133,12 +135,70 @@ pcoa.plot.disturbancedepth <- function(data.map, x_col, y_col, color_col, shape_
   if(!is.null(filename)) {
     ggsave(filename, plot = p, device = "pdf", width = 220, height = 150, units = "mm", dpi = 500)}
 return(p)}
+# PCOA PLOT w/ color=Disturbance and shape=Depth
+pcoa.plot.p.disturbancedepth <- function(data.map, x_col, y_col, color_col, shape_col, x_label = NULL, y_label = NULL, title = "Title", filename = NULL) {
+  p <- ggplot(data.map, aes(x={{x_col}}, y={{y_col}}, color={{color_col}}, shape={{shape_col}}))+
+  geom_point(size = 3) +
+  scale_color_manual(values=p_disturbance_colors, limits=p_disturbance_order) +
+  scale_shape_manual(values=depth_shapes, limits=depth_order) +
+  labs(x = ifelse(!is.null(x_label), x_label, as_label(enquo(x_col))), 
+       y = ifelse(!is.null(y_label), y_label, as_label(enquo(y_col))),
+       title = title)+
+  theme(axis.title = element_text(size = 16)) +
+  theme(legend.text = element_text(size = 16), legend.position = "right") +
+  theme(legend.title = element_text(size = 16)) +
+  theme(axis.text = element_text(size = 16)) +
+  theme(panel.background=element_rect(fill="white"), 
+      panel.grid.major = element_line(color = "lightgrey"), 
+      panel.grid.minor = element_line(color = "lightgrey"))
+  p + guides(fill = guide_legend(title.position = "top", ncol = 2))
+  if(!is.null(filename)) {
+    ggsave(filename, plot = p, device = "pdf", width = 220, height = 150, units = "mm", dpi = 500)}
+return(p)}
 # PCOA PLOT w/ color=Plot and shape=Date
 pcoa.plot.plot <- function(data.map, x_col, y_col, color_col, shape_col, x_label = NULL, y_label = NULL, title = "Title", filename = NULL) {
   p <- ggplot(data.map, aes(x={{x_col}}, y={{y_col}}, color={{color_col}}, shape={{shape_col}}))+
   geom_point(size = 3) +
   scale_color_manual(values=plot_colors, limits=plot_order) +
   scale_shape_manual(values=date_shapes, limits=date_order) +
+  labs(x = ifelse(!is.null(x_label), x_label, as_label(enquo(x_col))), 
+       y = ifelse(!is.null(y_label), y_label, as_label(enquo(y_col))),
+       title = title)+
+  theme(axis.title = element_text(size = 25)) +
+  theme(legend.text = element_text(size = 20), legend.position = "right") +
+  theme(legend.title = element_text(size = 25)) +
+  theme(axis.text = element_text(size = 20)) +
+  theme(panel.background=element_rect(fill="white"), 
+      panel.grid.major = element_line(color = "lightgrey"), 
+      panel.grid.minor = element_line(color = "lightgrey"))
+  if(!is.null(filename)) {
+    ggsave(filename, plot = p, device = "pdf", width = 220, height = 150, units = "mm", dpi = 500)}
+return(p)}
+# PCOA PLOT w/ color=Plot and shape=Disturbance
+pcoa.plot.plot.disturbance <- function(data.map, x_col, y_col, color_col, shape_col, x_label = NULL, y_label = NULL, title = "Title", filename = NULL) {
+  p <- ggplot(data.map, aes(x={{x_col}}, y={{y_col}}, color={{color_col}}, shape={{shape_col}}))+
+  geom_point(size = 3) +
+  scale_color_manual(values=plot_colors, limits=plot_order) +
+  #scale_shape_manual(values=p_disturbance_colors, limits=p_disturbance_order) +
+  labs(x = ifelse(!is.null(x_label), x_label, as_label(enquo(x_col))), 
+       y = ifelse(!is.null(y_label), y_label, as_label(enquo(y_col))),
+       title = title)+
+  theme(axis.title = element_text(size = 25)) +
+  theme(legend.text = element_text(size = 20), legend.position = "right") +
+  theme(legend.title = element_text(size = 25)) +
+  theme(axis.text = element_text(size = 20)) +
+  theme(panel.background=element_rect(fill="white"), 
+      panel.grid.major = element_line(color = "lightgrey"), 
+      panel.grid.minor = element_line(color = "lightgrey"))
+  if(!is.null(filename)) {
+    ggsave(filename, plot = p, device = "pdf", width = 220, height = 150, units = "mm", dpi = 500)}
+return(p)}
+# PCOA PLOT w/ color=Cluster and shape=Disturbance
+pcoa.disturbance.cluster <- function(data.map, x_col, y_col, color_col, shape_col, x_label = NULL, y_label = NULL, title = "Title", filename = NULL) {
+  p <- ggplot(data.map, aes(x={{x_col}}, y={{y_col}}, color={{color_col}}, shape={{shape_col}}))+
+  geom_point(size = 3) +
+  #scale_color_manual(values=plot_colors, limits=plot_order) +
+  #scale_shape_manual(values=p_disturbance_colors, limits=p_disturbance_order) +
   labs(x = ifelse(!is.null(x_label), x_label, as_label(enquo(x_col))), 
        y = ifelse(!is.null(y_label), y_label, as_label(enquo(y_col))),
        title = title)+
