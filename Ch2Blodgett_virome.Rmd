@@ -20,6 +20,7 @@ blodgett_data <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodget
 ```{r}
 dnayields <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/blodgett_dnayields.RDS")
 
+
 DNAyield <- dnayields %>%
   ggplot(aes(x = factor(Date, level = burn_date_order), y = DNA, fill = factor(Depth, level = depth_order))) +
   annotate('rect', xmin = -Inf, xmax = 2.5, ymin = -Inf, ymax = Inf, fill = 'palegreen', alpha = 0.5) +
@@ -60,28 +61,26 @@ yields_36_control <- yields.stats %>%
   filter(Depth == "3-6cm"&Treatment == "Prescribed_Control")
 kruskal.test(DNA ~ Burn, yields_36_control)
 
-# replacing NA with "0"
+# replacing NA with "0" - the bottom of threshold
 na_dnayields <- dnayields
 na_dnayields[is.na(na_dnayields)] <- 0
 na_DNAyield <- na_dnayields %>%
-  ggplot(aes(x = factor(Date, level = burn_date_order), y = DNA, fill = factor(Depth, level = depth_order))) +
+  ggplot(aes(x = Date, y = DNA, fill = Treatment)) +
   annotate('rect', xmin = -Inf, xmax = 2.5, ymin = -Inf, ymax = Inf, fill = 'palegreen', alpha = 0.5) +
-  geom_boxplot() + #outlier.shape=NA) +
-  geom_point(aes(group = interaction(Depth, Date)),
-             position = position_dodge(width = 0.75),
-             size = 0.5) +
-  xlab("Time") +
+  geom_boxplot(outlier.shape=NA) +
+  geom_jitter(aes(color = Depth), position = position_jitter(), size = 1.5) +
+  xlab("Timepoint") +
   ylab("DNA Yield (ng)") +
   theme_bw() +
-  theme(axis.title = element_text(size = 20)) +
-  theme(legend.position = "bottom", legend.text = element_text(size=20), legend.title = element_text(size=20)) +
+  theme(axis.title = element_text(size = 16)) +
+  theme(legend.position = "bottom", legend.text = element_text(size=16), legend.title = element_text(size=16)) +
   theme(axis.text = element_text(size = 16)) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  scale_fill_manual(name = "Depth", 
-                    values = depth_colors) +
+  scale_fill_manual(name = "Treatment", 
+                    values = treatment_colors) +
+  scale_color_manual(values = depth_colors) +
   facet_wrap(~ Treatment)
 
-na_DNAyield + theme(strip.text = element_text(size=14))
+na_DNAyield + theme(strip.text = element_text(size=16))
 ggsave("Blodgett_na_DNAyield.pdf", width = 200, height = 120, units = "mm", dpi = 500)
 
 # stats on DNA yield 
@@ -101,6 +100,49 @@ kruskal.test(DNA ~ Burn, na_yields_36_burn)
 na_yields_36_control <- na_yields.stats %>%
   filter(Depth == "3-6cm"&Treatment == "Prescribed_Control")
 kruskal.test(DNA ~ Burn, na_yields_36_control)
+
+
+# replacing NA with "0.1" - the top of threshold
+na.1_dnayields <- dnayields
+na.1_dnayields[is.na(na.1_dnayields)] <- 0.1
+na.1_DNAyield <- na.1_dnayields %>%
+  ggplot(aes(x = Date, y = DNA, fill = Treatment)) +
+  annotate('rect', xmin = -Inf, xmax = 2.5, ymin = -Inf, ymax = Inf, fill = 'palegreen', alpha = 0.5) +
+  geom_boxplot(outlier.shape=NA) +
+  geom_jitter(aes(color = Depth), position = position_jitter(), size = 1.5) +
+  xlab("Timepoint") +
+  ylab("DNA Yield (ng)") +
+  theme_bw() +
+  theme(axis.title = element_text(size = 16)) +
+  theme(legend.position = "bottom", legend.text = element_text(size=16), legend.title = element_text(size=16)) +
+  theme(axis.text = element_text(size = 16)) +
+  scale_fill_manual(name = "Treatment", 
+                    values = treatment_colors) +
+  scale_color_manual(values = depth_colors) +
+  facet_wrap(~ Treatment)
+
+na.1_DNAyield + theme(strip.text = element_text(size=16))
+ggsave("Blodgett_na.1_DNAyield.pdf", width = 200, height = 120, units = "mm", dpi = 500)
+
+# stats on DNA yield 
+# this is where the NA values are replaced with a 0.1
+na.1_yields.stats <- na.1_dnayields
+na.1_yields_03_burn <- na.1_yields.stats %>%
+  filter(Depth == "0-3cm"&Treatment == "Prescribed_Burn")
+kruskal.test(DNA ~ Disturbance, na.1_yields_03_burn)
+na.1_yields_03_control <- na.1_yields.stats %>%
+  filter(Depth == "0-3cm"&Treatment == "Prescribed_Control")
+kruskal.test(DNA ~ Burn, na.1_yields_03_control)
+
+na.1_yields_36_burn <- na.1_yields.stats %>%
+  filter(Depth == "3-6cm"&Treatment == "Prescribed_Burn")
+kruskal.test(DNA ~ Burn, na.1_yields_36_burn)
+
+na.1_yields_36_control <- na.1_yields.stats %>%
+  filter(Depth == "3-6cm"&Treatment == "Prescribed_Control")
+kruskal.test(DNA ~ Burn, na.1_yields_36_control)
+
+
 ```
 # PCoA of Entire Dataset
 ```{r}
@@ -521,6 +563,7 @@ pxB1xU1.otu.map <- pcoa.map(pxB1xU1.otu.pcoa.points, blodgett_data)
 variance(pxB1xU1.otu.pcoa, 1)
 variance(pxB1xU1.otu.pcoa, 2)
 pcoa.plot.plot.disturbance(pxB1xU1.otu.map, x_col = pcoa1, y_col = pcoa2, color_col= Plot, shape_col = Disturbance, x_label = "5.90% Variance Explained", y_label = "5.56% Variance Explained", title = "2021 Blodgett Viromes xB1xU1", filename = "2021_blodgett_plot_disturbance_xB1_xU1.pdf")
+pcoa.disturbance.cluster(pxB1xU1.otu.map, x_col = pcoa1, y_col = pcoa2, color_col= Cluster, shape_col = Disturbance, x_label = "5.90% Variance Explained", y_label = "5.56% Variance Explained", title = "2021 Blodgett Viromes xB1xU1", filename = "2021_blodgett_cluster_disturbance_xB1_xU1.pdf")
 # run PERMANOVAs
 variables <- c("Disturbance", "Depth", "Date", "Treatment", "Plot")
 pxB1xU1.adonis.results <- run_adonis(variables, pxB1xU1.otu.dist, pxB1xU1.otu.map)
@@ -719,21 +762,25 @@ variables <- c("Disturbance", "Depth", "Date", "Treatment")
 dna.adonis.results <- run_adonis(variables, dna.otu.dist, dna.otu.map)
 dna.adonis.table <- do.call(rbind, dna.adonis.results)
 
+# Burn Plots, Surface Only (2021)
+bs.otu.dist <- distance(bs.otu.rel)
+bs.otu.pcoa <- pcoa(bs.otu.dist)
+bs.otu.pcoa.points <- pcoa.points(bs.otu.pcoa)
+bs.otu.map <- pcoa.map(bs.otu.pcoa.points, blodgett_data)
+variance(bs.otu.pcoa, 1)
+variance(bs.otu.pcoa, 2)
+pcoa.plot.p.disturbancedepth(bs.otu.map, x_col = pcoa1, y_col = pcoa2, color_col= Disturbance, shape_col = Depth, x_label = "11.77% Variance Explained", y_label = "7.89% Variance Explained", title = "Burn Plots, Surface Only Virome", filename = "surface_burn_blodgett_disturbancedepth.pdf")
+pcoa.plot.p.disturbance(bs.otu.map, x_col = pcoa1, y_col = pcoa2, color_col= Disturbance, shape_col = Date, x_label = "11.77% Variance Explained", y_label = "7.89% Variance Explained", title = "Burn Plots, Surface Only Viromes", filename = "surface_burn_blodgett_disturbance.pdf")
+pcoa.plot.plot(bs.otu.map, x_col = pcoa1, y_col = pcoa2, color_col= Plot, shape_col = Date, x_label = "11.77% Variance Explained", y_label = "7.89% Variance Explained", title = "Burn Plots, Surface Only Viromes", filename = "surface_burn_blodgett_plot.pdf")
+# run PERMANOVAs
+variables <- c("Disturbance", "Depth", "Date", "Treatment")
+bs.adonis.results <- run_adonis(variables, bs.otu.dist, bs.otu.map)
+bs.adonis.table <- do.call(rbind, bs.adonis.results)
+
 ```
 
 # NMDS
 ```{r}
-p.otu.dist <- distance(p.otu.rel)
-nmds <- metaMDS(p.otu.dist)
-plot(nmds)
-
-scores(nmds) %>%
-  as_tibble(rownames="ID") %>%
-  inner_join(., p.map, by="ID") %>%
-  ggplot(aes(x=NMDS1, y=NMDS2, color=Disturbance))+
-  geom_point()
-
-
 bs.otu.dist <- distance(bs.otu.rel)
 
 set.seed(1)
@@ -744,43 +791,49 @@ plot(bs.nmds)
 scores(bs.nmds) %>%
   as_tibble(rownames="ID") %>%
   inner_join(., bs.map, by="ID") %>%
-  ggplot(aes(x=NMDS1, y=NMDS2, color=Disturbance))+
+  ggplot(aes(x=NMDS1, y=NMDS2, shape=Disturbance))+
   geom_point()+
   geom_text(aes(label= ID))+
   ggtitle("NMDS Plot of Disturbance in Treatment Plots, Surface Soil, Stress = 0.15")+
   theme_minimal()
 
-colnames(b.chem.ID)[colnames(b.chem.ID) == "SampleID"] <- "ID"
-bs.env <- inner_join(bs.map, b.chem.ID, by="ID")
+bs.nut.mtx <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/bs.nut.mtx.RDS")
+
+bs.nut.mtx <- as.data.frame(bs.nut.mtx)
+bs.nut.mtx <- rownames_to_column(bs.nut.mtx, var = "ID")
+bs.env <- inner_join(bs.map, bs.nut.mtx, by="ID")
 bs.fit <- envfit(bs.nmds, bs.env, permutations = 999)
 
 nmds_scores <- scores(bs.nmds, display = "sites")
 nmds_scores <- as_tibble(nmds_scores, rownames = "ID")
 nmds_scores <- inner_join(nmds_scores, bs.env, by = "ID")
 
-nmds_plot <- ggplot(nmds_scores, aes(x = NMDS1, y = NMDS2, color = Disturbance)) +
-  geom_point() +
+nmds_plot <- ggplot(nmds_scores, aes(x = NMDS1, y = NMDS2, color = Plot, shape = Disturbance)) +
+  geom_point(size=3) +
   ggtitle("NMDS Plot of Disturbance in Treatment Plots, Surface Soil, Stress = 0.15") +
   xlab("NMDS1") +
   ylab("NMDS2") +
+  scale_color_manual(values = plot_colors)+
   theme_minimal()
 
-library(ggrepel)
+vectors_df <- as.data.frame(bs.fit$vectors$arrows)
+pvals <- bs.fit$vectors$pvals
+vectors_df$pvals <- bs.fit$vectors$pvals
+vectors_df$label <- rownames(vectors_df)
+sig_vectors_df <- vectors_df %>% filter(pvals < 0.05)
+
 nmds_plot +
-  geom_segment(data = as.data.frame(bs.fit$vectors$arrows),
+  geom_segment(data = sig_vectors_df,
                aes(x = 0, y = 0, xend = NMDS1, yend = NMDS2),
-               arrow = arrow(length = unit(0.1, "cm")),
-               color = "blue") +
-  geom_text_repel(data = as.data.frame(fit$vectors$arrows), 
-            aes(x=NMDS1, y = NMDS2, label = rownames(fit$vectors$arrows)), 
-            color = "blue",
-            size = 2,
-            box.padding = unit(0.3, "lines"),   # Padding around each label
-                point.padding = unit(0.3, "lines"), # Padding around each point
-                segment.size = 0.2,                 # Size of the segment connecting label to point
-                min.segment.length = unit(0.1, "lines"))
+               arrow = arrow(length = unit(0.2, "cm")),
+               color = "black", alpha = 0.2, inherit.aes = FALSE) +
+  geom_text(data = sig_vectors_df, 
+            aes(x=NMDS1, y = NMDS2, label = label), 
+            color = "black",
+            size = 3, inherit.aes = FALSE)
 ggsave("bs.nmds.pdf", width = 200, height = 150, units = "mm", dpi = 500)
 ```
+
 ```{r}
 # Burn Plots, both depths
 b.otu.dist <- distance(b.otu.rel)
@@ -1279,7 +1332,7 @@ p.otu.phylum.stack <- group_by(p.otu.phylum.long, HostPhylum, ID) %>%
   summarize(RelAbd=sum(RelAbd))
 p.otu.phylum.stack <- p.otu.phylum.stack %>%
   group_by(HostPhylum) %>%
-  mutate(NewHostPhylum = ifelse(all(RelAbd < 0.001), 'Other', HostPhylum)) %>%
+  mutate(NewHostPhylum = ifelse(all(RelAbd < 0.003), 'Other', HostPhylum)) %>%
   ungroup()
 
 # Prep data frame for plotting
@@ -1291,27 +1344,32 @@ p.otu.phylum.map <- p.otu.phylum.map %>%
     Date == "4/18/2021" ~ "T2", 
     Date == "4/27/2021" ~ "T3", 
     Date == "5/8/2021" ~ "T4")) %>%
+  mutate(depth = case_when(
+    Depth == "0-3cm" ~ " 0-3",
+    Depth == "3-6cm" ~ " 3-6")) %>%
   arrange(Order) %>%
-  mutate(TreatRep = paste(Order, SubPlot, Depth)) %>%
-  arrange(TreatRep)
+  mutate(SubPlotdepth = paste(SubPlot, depth)) %>%
+  arrange(SubPlotdepth)
 
 unique(p.otu.phylum.map$NewHostPhylum)
 
 
 # Plot
-hostphylum <- ggplot(p.otu.phylum.map, aes(x=TreatRep, y=RelAbd, fill=NewHostPhylum))+
+hostphylum <- ggplot(p.otu.phylum.map, aes(x=SubPlotdepth, y=RelAbd, fill=NewHostPhylum))+
     labs(x="Sample ID", 
        y ="Relative Abundance",
        title = "Prescribed Burn vOTU Host Prediction by Sample")+
   annotate('rect', xmin = 16.5, xmax = 24.5, ymin = -Inf, ymax = Inf, fill = 'lightgray', alpha = 0.5) +
-  annotate('rect', xmin = 40.5, xmax = 48.5, ymin = -Inf, ymax = Inf, fill = 'lightgray', alpha = 0.5) +
-  annotate('rect', xmin = 63.5, xmax = 71.5, ymin = -Inf, ymax = Inf, fill = 'lightgray', alpha = 0.5) +
-  annotate('rect', xmin = 83.5, xmax = Inf, ymin = -Inf, ymax = Inf, fill = 'lightgray', alpha = 0.5) +
+  #annotate('rect', xmin = 40.5, xmax = 48.5, ymin = -Inf, ymax = Inf, fill = 'lightgray', alpha = 0.5) +
+  #annotate('rect', xmin = 63.5, xmax = 71.5, ymin = -Inf, ymax = Inf, fill = 'lightgray', alpha = 0.5) +
+  #annotate('rect', xmin = 83.5, xmax = Inf, ymin = -Inf, ymax = Inf, fill = 'lightgray', alpha = 0.5) +
   geom_bar(stat="identity")+
-  scale_fill_manual(values=collapsed_phylum_colors) +
+  scale_fill_manual(name = "Host Phylum",
+                    values=collapsed_phylum_colors) +
   theme_bw() +
-  geom_vline(xintercept = c(24.5, 48.5, 71.5), linetype = "solid", color = "black", size = 0.75)+
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5), legend.position = "bottom")
+  #geom_vline(xintercept = c(24.5, 48.5, 71.5), linetype = "solid", color = "black", size = 0.75)+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5), legend.position = "bottom")+
+  facet_wrap(~ Order, ncol = 4)
 
 hostphylum <- ggsave("2021hostblodgett_phylum.pdf", width = 300, height = 150, units = "mm", dpi = 500)
 ```

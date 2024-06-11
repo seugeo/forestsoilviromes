@@ -12,6 +12,7 @@ date: "2024-03-05"
   p_disturbance_order <- c('No', 'Yes_Burn')
   plot_colors <- c("turquoise3","turquoise4", "chocolate2", "burlywood", "darkorange4", "tomato3")
   plot_order <- c('U1', 'U2', 'B1', 'B2', 'B3', 'B4')
+  treatment_colors <- c("#ff7002", "#92d050")
   probe_colors <- c("#ffba00","#df4200","#aa0048","#800080")
   probe_order <- c('Depth1', 'Depth2', 'Depth4', 'Depth6')
   date_shapes <- c(16,18,0,3,8)

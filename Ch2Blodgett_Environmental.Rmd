@@ -328,8 +328,15 @@ variables <- tribble(~Variable, ~Variable2,
 # All plots (b - blodgett)
 ```{r}
 b.metadata <- chem_blodgett
+b.metadata <- b.metadata %>%
+  mutate(Timepoint = case_when(
+    Date == "4/5/2021" ~ "T1",
+    Date == "4/18/2021" ~ "T2", 
+    Date == "4/27/2021" ~ "T3", 
+    Date == "5/8/2021" ~ "T4",
+    Date == "6/20/2021" ~ "T5"))
 b.chem.ID=b.metadata %>%
-  select(-OrganicNRelease, -OrganicPRelease, -SoilHealthCalculation, -OrganicNInorganicN, -WDRFBuffer, -OrganicNReserve, -OrganicPReserve, -AltID, -virome, -Disturbance, -Plot, -SubPlot, -Date, -Treatment, -Burn, -Depth)
+  select(-OrganicNRelease, -OrganicPRelease, -SoilHealthCalculation, -OrganicNInorganicN, -WDRFBuffer, -OrganicNReserve, -OrganicPReserve, -AltID, -virome, -Disturbance, -Plot, -SubPlot, -Date, -Treatment, -Burn, -Depth, -Timepoint)
 ```
 
 # All plots, before (ab - all before)
@@ -398,6 +405,12 @@ d.chem.ID=d.metadata %>%
 ```{r}
 dnj.metadata <- subset(chem_blodgett, Disturbance=="yes" & chem_blodgett$Date != "6/20/2021", )
 dnj.chem.ID=dnj.metadata %>%
+  select(-OrganicNRelease, -OrganicPRelease, -SoilHealthCalculation, -OrganicNInorganicN, -WDRFBuffer, -OrganicNReserve, -OrganicPReserve, -AltID, -virome, -Disturbance, -Plot, -SubPlot, -Date, -Treatment, -Burn, -Depth)
+```
+# 2021 (only treatment plots) at 0-3 cm = bs
+```{r}
+bs.metadata <- subset(chem_blodgett, Treatment=="Burn" & chem_blodgett$Depth == "0-3cm", )
+bs.chem.ID=bs.metadata %>%
   select(-OrganicNRelease, -OrganicPRelease, -SoilHealthCalculation, -OrganicNInorganicN, -WDRFBuffer, -OrganicNReserve, -OrganicPReserve, -AltID, -virome, -Disturbance, -Plot, -SubPlot, -Date, -Treatment, -Burn, -Depth)
 ```
 # Original control plots (including B4), before & after (oc - original controls)
@@ -804,6 +817,50 @@ library(lubridate)
 ```
 # All plots (b - blodgett)
 ```{r}
+if(any(is.na(b.nut.mtx))) {
+  print("Data contains missing values. Please handle them before PCA.")
+} else {
+  print("No missing values found.")
+}
+
+pca_fit <- princomp(b.nut.mtx, cor = TRUE)
+loadings <- pca_fit$loadings
+print(loadings)
+
+
+
+loadings(pca_fit)
+scree_plot <- data.frame(PC = 1:length(pca_fit$sdev),
+                         Variance = pca_fit$sdev^2 / sum(pca_fit$sdev^2))
+
+ggplot(scree_plot, aes(x = PC, y = Variance)) +
+  geom_line() +
+  geom_point() +
+  xlab("Principal Component") +
+  ylab("Proportion of Variance Explained") +
+  ggtitle("Scree Plot")
+
+pca_var <- pca_fit$sdev^2
+pca_var_explained <- pca_var / sum(pca_var)
+
+scree_plot <- data.frame(PC = 1:length(pca_fit$sdev),
+                         Variance = pca_var_explained)
+
+ggplot(scree_plot, aes(x = PC, y = Variance)) +
+  geom_line() +
+  geom_point() +
+  xlab("Principal Component") +
+  ylab("Proportion of Variance Explained") +
+  ggtitle("Scree Plot")
+
+loadings <- pca_fit$rotation
+print(loadings)
+
+
+saveRDS(b.chem.ID, "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/b.chem.ID.RDS")
+
+
+
 #Environmental distance analysis
 #Remove variables with no variation, z-transform each variable, and format it as a matrix
 b.nut.mtx <- nutmtx(b.chem.ID)
@@ -828,6 +885,7 @@ b <- ggplot(b.map.pca, aes(x=pca1, y=pca2, color=Plot, shape = Depth, frame = Da
   geom_point(size = 5)+
   xlab("PCA1, 47.41% Variance Explained")+
   ylab("PCA2, 13.82% Variance Explained")+
+  ggtitle("PCA of Environmental Data") +
   theme(axis.title = element_text(size = 20)) +
   theme(legend.text = element_text(size = 20)) +
   theme(legend.title = element_text(size = 20)) +
@@ -840,13 +898,70 @@ b_disturbance <- ggplot(b.map.pca, aes(x=pca1, y=pca2, color=Disturbance, shape 
   geom_point(size = 5)+
   xlab("PCA1, 47.41% Variance Explained")+
   ylab("PCA2, 13.82% Variance Explained")+
+  ggtitle("PCA of Environmental Data") +
+  theme(axis.title = element_text(size = 20)) +
+  theme(legend.text = element_text(size = 20)) +
+  theme(legend.title = element_text(size = 20)) +
+  theme(axis.text = element_text(size = 15)) +
+  scale_color_manual(values = p_disturbance_colors)
+
+ggsave("b_disturbance_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+
+```
+```{r}
+# Generalized Linear Model
+b.map <- b.map %>%
+  mutate(across(c(Timepoint, Treatment, Disturbance, Depth, Burn), as.factor))
+
+b.map$Depth <- relevel(b.map$Depth, ref = "0-3cm")
+b.map$Treatment <- relevel(b.map$Treatment, ref = "Control")
+b.map$Burn <- relevel(b.map$Burn, ref = "Before")
+
+#cat(paste(colnames(b.map), collapse = ", "))
+chemistry <- c("Aluminum", "Ammonium", "AvailableK", "AvailableN", "AvailableP", "Calcium", "CO2C", "Copper", "InorganicNitrogen", "InorganicPhosphorus", "Iron", "MAC", "Magnesium", "Manganese", "Moisture", "Nitrate", "OrganicCN", "OrganicMatter", "OrganicN", "OrganicPhosphorus", "Potassium", "Sodium", "SoilpH", "SolubleSalt", "Sulfur", "TotalN", "TotalOrganicC", "TotalPhosphorus", "Zinc")
+glm_results <- lapply(chemistry, function(prop) {
+  formula <- as.formula(paste(prop, "~ Treatment * Burn"))
+  glm(formula, data = b.map)
+})
+
+names(glm_results) <- chemistry
+lapply(glm_results, summary)
+```
+# All plots, no june
+```{r}
+#Environmental distance analysis
+#Remove variables with no variation, z-transform each variable, and format it as a matrix
+nj.nut.mtx <- nutmtx(nj.chem.ID)
+nj.map <- nj.metadata[, -c(3:38)]
+nj.map = left_join(nj.map,nj.nut.mtx,by="SampleID")
+nj.nut.mtx <- nj.nut.mtx[,-1]
+nj.nut.mtx <- as.matrix(nj.nut.mtx)
+
+#Calculate the environmental distance and filter redundant values
+nj.nut.dist <- as.matrix(dist(nj.nut.mtx, method = "euclidean"))
+nj.nut.pca=cmdscale(nj.nut.dist, eig = TRUE)
+pcavariance(nj.nut.pca, 1)
+pcavariance(nj.nut.pca, 2)
+nj.nut.pca$points
+nj.nut.pca.points=data.frame(nj.nut.pca$points)
+colnames(nj.nut.pca.points)=c("pca1", "pca2")
+nj.map.pca <- pca.map(nj.nut.pca.points,nj.map)
+
+# PCA plot
+nj.map.pca$Date <- factor(nj.map.pca$Date, levels = burn_date_order)
+ggplot(nj.map.pca, aes(x=pca1, y=pca2, color=Date, shape = Disturbance))+
+  geom_point(size = 5)+
+  xlab("PCA1, 47.02% Variance Explained")+
+  ylab("PCA2, 14.33% Variance Explained")+
   theme(axis.title = element_text(size = 20)) +
   theme(legend.text = element_text(size = 20)) +
   theme(legend.title = element_text(size = 20)) +
   theme(axis.text = element_text(size = 15))
 
-ggsave("b_disturbance_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+ggsave("allplots_xJune_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500)
 ```
+
+
 # All plots, after (a - after)
 ```{r}
 #Environmental distance analysis
@@ -1204,6 +1319,54 @@ ggplot(bba.map.pca, aes(x=pca1, y=pca2, color=Date, shape = virome))+
 
 ggsave("burn_before_after_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500)
 ```
+# Burn plots, surface soil (bs - burn surface)
+```{r}
+#Environmental distance analysis
+#Remove variables with no variation, z-transform each variable, and format it as a matrix
+bs.nut.mtx <- nutmtx(bs.chem.ID)
+bs.map <- bs.metadata[, -c(3:38)]
+bs.map = left_join(bs.map,bs.nut.mtx,by="SampleID")
+bs.nut.mtx <- bs.nut.mtx[,-1]
+bs.nut.mtx <- as.matrix(bs.nut.mtx)
+
+saveRDS(bs.nut.mtx, "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/bs.nut.mtx.RDS")
+
+
+#Calculate the environmental distance and filter redundant values
+bs.nut.dist <- as.matrix(dist(bs.nut.mtx, method = "euclidean"))
+bs.nut.pca=cmdscale(bs.nut.dist, eig = TRUE)
+pcavariance(bs.nut.pca, 1)
+pcavariance(bs.nut.pca, 2)
+bs.nut.pca$points
+bs.nut.pca.points=data.frame(bs.nut.pca$points)
+colnames(bs.nut.pca.points)=c("pca1", "pca2")
+bs.map.pca <- pca.map(bs.nut.pca.points,bs.map)
+
+# PCA plot
+bs.map.pca$Date <- factor(bs.map.pca$Date, levels = burn_date_order)
+bs <- ggplot(bs.map.pca, aes(x=pca1, y=pca2, color=Plot, shape = Depth, frame = Date))+
+  geom_point(size = 5)+
+  xlab("PCA1, 51.90% Variance Explained")+
+  ylab("PCA2, 12.56% Variance Explained")+
+  theme(axis.title = element_text(size = 20)) +
+  theme(legend.text = element_text(size = 20)) +
+  theme(legend.title = element_text(size = 20)) +
+  theme(axis.text = element_text(size = 15))
+
+ggsave("bs_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+
+
+bs_disturbance <- ggplot(bs.map.pca, aes(x=pca1, y=pca2, color=Disturbance, shape = virome, frame = Date))+
+  geom_point(size = 5)+
+  xlab("PCA1, 51.90% Variance Explained")+
+  ylab("PCA2, 12.56% Variance Explained")+
+  theme(axis.title = element_text(size = 20)) +
+  theme(legend.text = element_text(size = 20)) +
+  theme(legend.title = element_text(size = 20)) +
+  theme(axis.text = element_text(size = 15))
+
+ggsave("bs_disturbance_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
 # Original control plots (including B4), before & after (oc - original controls)
 ```{r}
 #Environmental distance analysis
@@ -1385,6 +1548,22 @@ b.k <- ggplot(b.map.pca.k, aes(x=pca1, y=pca2, color=Cluster, shape = virome))+
   theme(axis.text = element_text(size = 15))
 
 ggsave("b_k_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+
+b_k_disturbance <- ggplot(b.map.pca.k, aes(x=pca1, y=pca2, color=Disturbance, shape = virome))+
+  geom_point(size = 5)+
+  xlab("PCA1, 47.41% Variance Explained")+
+  ylab("PCA2, 13.82% Variance Explained")+
+  ggtitle("PCA of Environmental Data") +
+  scale_color_manual(values = p_disturbance_colors) +
+  theme_bw()+
+  theme(axis.title = element_text(size = 20)) +
+  theme(legend.text = element_text(size = 20)) +
+  theme(legend.title = element_text(size = 20)) +
+  theme(axis.text = element_text(size = 15))
+
+
+ggsave("b_k_disturbance_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+
 ```
 
 

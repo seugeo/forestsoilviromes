@@ -134,6 +134,24 @@ p.asv.rare <- t(rrarefy(t(p.asv), sample = 18500))
 p.asv.rare <- data.frame(p.asv.rare) %>%
   rmv_sngl()
 ```
+# Everything except viromes
+```{r}
+t_map <- subset(blodgett_filtered_map, SampleType=="Total")
+t.asv <- asv.filtered[, blodgett_filtered_map$SampleType=="Total"] 
+
+identical(colnames(t.asv), t_map$ID)
+
+# don't need to run the below code every time, only the first time to figure out what to rarefy to
+# t.asv.rarecurve <- rarecurve(t(t.asv), step = 100)
+# x <- map_dfr(t.asv.rarecurve, bind_rows) %>% bind_cols(colnames(t.asv),.)
+# x <- as.data.frame(x)
+# row.names(x) <- x[, 1]
+
+t.asv.rare <- t(rrarefy(t(t.asv), sample = 18600))
+t.asv.rare <- data.frame(t.asv.rare) %>%
+  rmv_sngl()
+```
+
 ## Subset depth 
 # 0-3 cm (s - surface)
 ```{r}
@@ -209,6 +227,60 @@ b.asv.rare <- t(rrarefy(t(b.asv), sample = 18400))
 b.asv.rare <- data.frame(b.asv.rare) %>%
   rmv_sngl()
 ```
+# NMDS
+```{r}
+b.asv.dist <- distance(b.asv.rare)
+
+set.seed(1)
+b.asv.nmds <- metaMDS(b.asv.dist)
+b.asv.nmds$points
+
+scores(b.asv.nmds) %>%
+  as_tibble(rownames="ID") %>%
+  inner_join(., b_map, by="ID") %>%
+  ggplot(aes(x=NMDS1, y=NMDS2, color=Disturbance))+
+  geom_point()+
+  geom_text(aes(label= ID))+
+  ggtitle("NMDS Plot of Disturbance in Treatment Plots, ASVs, Stress = 0.11")+
+  theme_minimal()
+
+bba.nut.mtx <- as.data.frame(bba.nut.mtx)
+bba.nut.mtx <- rownames_to_column(bba.nut.mtx, var = "MapID")
+bba.nut.mtx <- bba.nut.mtx %>%
+  mutate(MapID = gsub("V", "M", MapID)) %>%
+  mutate(MapID = ifelse(MapID == "UDM24D", "UDM24", MapID))
+b.asv.env <- inner_join(b_map, bba.nut.mtx, by="MapID")
+b.asv.fit <- envfit(b.asv.nmds, b.asv.env, permutations = 999)
+
+nmds_scores <- scores(b.asv.nmds, display = "sites")
+nmds_scores <- as_tibble(nmds_scores, rownames = "ID")
+nmds_scores <- inner_join(nmds_scores, b.asv.env, by = "ID")
+
+nmds_plot <- ggplot(nmds_scores, aes(x = NMDS1, y = NMDS2, color = Disturbance)) +
+  geom_point() +
+  ggtitle("NMDS Plot of Disturbance in Treatment Plots, ASVs, Stress = 0.11") +
+  xlab("NMDS1") +
+  ylab("NMDS2") +
+  theme_minimal()
+
+vectors_df <- as.data.frame(b.asv.fit$vectors$arrows)
+pvals <- b.asv.fit$vectors$pvals
+vectors_df$pvals <- b.asv.fit$vectors$pvals
+vectors_df$label <- rownames(vectors_df)
+sig_vectors_df <- vectors_df %>% filter(pvals < 0.002)
+
+
+nmds_plot +
+  geom_segment(data = sig_vectors_df,
+               aes(x = 0, y = 0, xend = NMDS1, yend = NMDS2),
+               arrow = arrow(length = unit(0.1, "cm")),
+               color = "blue", alpha = 0.1) +
+  geom_text(data = sig_vectors_df, 
+            aes(x=NMDS1, y = NMDS2, label = label), 
+            color = "blue",
+            size = 3)
+ggsave("b16S.nmds.pdf", width = 200, height = 150, units = "mm", dpi = 500)
+```
 
 # PCoA Plot
 # Prescribed Burn Experiment Only
@@ -223,6 +295,9 @@ variance(p.asv.pcoa, 2)
 
 pcoa.plot.p.disturbance(p.asv.map, x_col = pcoa1, y_col = pcoa2, color_col= Disturbance, shape_col = Date, x_label = "24.92% Variance Explained", y_label = "11.88% Variance Explained", title = "2021 Blodgett 16S rRNA ASV Profile", filename = "2021_blodgett_ASV_pcoa_disturbance.pdf")
 pcoa.disturbance.cluster(p.asv.map, x_col = pcoa1, y_col = pcoa2, color_col= Cluster, shape_col = Disturbance, x_label = "24.92% Variance Explained", y_label = "11.88% Variance Explained", title = "2021 Blodgett 16S rRNA ASV Profile", filename = "2021_blodgett_ASV_pcoa_cluster.pdf")
+pcoa.plot.plot.disturbance(p.asv.map, x_col = pcoa1, y_col = pcoa2, color_col= Plot, shape_col = Disturbance, x_label = "24.92% Variance Explained", y_label = "11.88% Variance Explained", title = "2021 Blodgett 16S rRNA ASV Profile", filename = "2021_blodgett_ASV_pcoa_plot_disturbance.pdf")
+
+
 ```
 # 0-3 cm (s - surface)
 ```{r}
@@ -338,8 +413,64 @@ pk_phylum <- ggplot(p.phylum.map, aes(x=ClusterTime, y=counts, fill=factor(NewPh
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5),
         legend.position = "none")
 pk_phylum <- ggsave("pk_phylum.pdf", width = 350, height = 100, units = "mm", dpi = 500)
+```
+# Total DNA only
+```{r}
+# Join taxonomy and abundance data together
+# first, add OTU_ID back as a column
+t.id.asv <- t.asv.rare
+t.id.asv$OTU_ID <- rownames(t.id.asv)
+tax_t <- left_join(t.id.asv, tax_filtered, by = "OTU_ID")
+# make sure blodgett.asv is in the same order as tax_blodgett (return = TRUE)
+check_column <- "OTU_ID"
+all(t.id.asv[[check_column]] == tax_t[[check_column]])
+unique(tax_t$Phylum)
+# pivot table and group by Phylum
+tax_t.long <- pivot_longer(tax_t, cols=1:144, names_to = "ID", values_to = "counts")
+t.phylum.long <- group_by(tax_t.long, Phylum, ID) %>%
+  summarize(counts=sum(counts))
+
+# rarefied to 18,600
+# collapse phyla into "other" category if represents less than 2%, which is 372
+t.phylum.long$Phylum <- as.character(t.phylum.long$Phylum)
+t.phylum.long <- t.phylum.long %>%
+  group_by(Phylum) %>%
+  mutate(NewPhylum = ifelse(all(counts < 372), 'Other', Phylum)) %>%
+  ungroup()
+
+unique(t.phylum.long$NewPhylum)
+
+# Prep data frame for plotting
+t.phylum.map <- merge(t.phylum.long, t_map, by="ID")
+t.phylum.map <- t.phylum.map %>% 
+  mutate(treatment = case_when(
+    Date == "Prescribed_Control" ~ "T1",
+    Date == "4/18/2021" ~ "T2", 
+    Date == "4/27/2021" ~ "T3", 
+    Date == "5/8/2021" ~ "T4")) %>%
+  mutate(depth = case_when(
+    Depth == "0-3cm" ~ " 0-3",
+    Depth == "3-6cm" ~ " 3-6")) %>%
+  arrange(Order) %>%
+  mutate(SubPlotdepth = paste(SubPlot, depth)) %>%
+  arrange(SubPlotdepth)
+treatment_order <- c('Prescribed_Control','Heat_Field','Heat_Control', '30ºC', '60ºC', '90ºC', 'Prescribed_Burn')
+
+# Plot
+total_phylum <- ggplot(t.phylum.map, aes(x=factor(Treatment, level = treatment_order), y=counts, fill=NewPhylum))+
+    labs(x="Treatment", 
+       y ="Counts",
+       title = "Blodgett 16S rRNA ASV Profile")+
+  geom_bar(stat="identity", position = "fill")+
+  scale_fill_manual(values=collapsed_phylum_colors) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+total_phylum <- ggsave("total_phylum.pdf", width = 200, height = 100, units = "mm", dpi = 500)
 
 ```
+
+
 # 0-3 cm (s - surface)
 ```{r}
 # Join taxonomy and abundance data together
@@ -373,18 +504,20 @@ s.phylum.map <- s.phylum.map %>%
   arrange(TimePoint)
 
 # Plot 
-s_phylum <- ggplot(s.phylum.map, aes(x=TimeSubPlot, y=counts, fill=factor(NewPhylum, level=collapsed_phyla_order)))+
+s_phylum <- ggplot(s.phylum.map, aes(x=SubPlot, y=counts, fill=factor(NewPhylum, level=collapsed_phyla_order)))+
     labs(x="Sample", 
-       y ="Counts",
+       y ="Relative Abundance",
        title = "0-3cm, Prescribed Burn 16S rRNA ASV Profile")+
+  annotate('rect', xmin = 8.5, xmax = 12.5, ymin = -Inf, ymax = Inf, fill = 'lightgray', alpha = 0.75) +
   geom_bar(stat="identity", position = "fill", width = 0.75)+
-  geom_vline(xintercept = c(11.5, 23.5, 35.5, 44.5), linetype = "solid", color = "black", size = 0.75)+
   scale_fill_manual(values=collapsed_phylum_colors) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5),
-        legend.position = "bottom")
+        legend.position = "none") +
+  facet_wrap(~ TimePoint, ncol = 5)
 s_phylum
-s_phylum <- ggsave("s_phylum.pdf", width = 350, height = 100, units = "mm", dpi = 500)
+s_phylum <- ggsave("s_phylum.pdf", width = 250, height = 80, units = "mm", dpi = 500)
+
 
 # cluster plot
 s.phylum.map <- s.phylum.map %>% 
@@ -442,18 +575,19 @@ d.phylum.map <- d.phylum.map %>%
   arrange(TimePoint)
 
 # Plot
-d_phylum <- ggplot(d.phylum.map, aes(x=TimeSubPlot, y=counts, fill=factor(NewPhylum, level=collapsed_phyla_order)))+
+d_phylum <- ggplot(d.phylum.map, aes(x=SubPlot, y=counts, fill=factor(NewPhylum, level=collapsed_phyla_order)))+
     labs(x="Sample", 
-       y ="Counts",
+       y ="Relative Abundance",
        title = "3-6cm, Prescribed Burn 16S rRNA ASV Profile")+
+  annotate('rect', xmin = 8.5, xmax = 12.5, ymin = -Inf, ymax = Inf, fill = 'lightgray', alpha = 0.75) +
   geom_bar(stat="identity", position = "fill", width = 0.75)+
-  geom_vline(xintercept = c(12.5, 24.5, 36.5, 48.5), linetype = "solid", color = "black", size = 0.75)+
   scale_fill_manual(values=collapsed_phylum_colors) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5),
-        legend.position = "none")
+        legend.position = "none") +
+  facet_wrap(~ TimePoint, ncol = 5)
 d_phylum
-d_phylum <- ggsave("d_phylum.pdf", width = 350, height = 100, units = "mm", dpi = 500)
+d_phylum <- ggsave("d_phylum.pdf", width = 250, height = 80, units = "mm", dpi = 500)
 
 # cluster plot
 d.phylum.map <- d.phylum.map %>% 
