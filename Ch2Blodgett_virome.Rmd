@@ -14,7 +14,9 @@ library(ComplexUpset)
 # Read Input Files
 ```{r}
 otu <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/blodgett_all_otu.RDS")
+otu.count <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/blodgett.otu.count.RDS")
 blodgett_data <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/blodgett_all_metadata.RDS")
+
 ```
 # DNA Yields
 ```{r}
@@ -183,6 +185,31 @@ colSums(p.otu.rel)
 p.map <- subset(blodgett_data, Treatment=="Prescribed_Burn" | blodgett_data$Treatment=="Prescribed_Control")
 richness <- colSums(p.otu.rel > 0)
 p.map$Richness <- richness
+p.count <- otu.count[, blodgett_data$Treatment=="Prescribed_Burn" | blodgett_data$Treatment=="Prescribed_Control"] %>%
+  rmv_sngl()
+p.map.pc1 = left_join(p.map, pc1, by="ID")
+
+
+# make sure IDs are identical in count and metadata tables
+identical(colnames(p.count), p.map$ID)
+
+# Prescribed Burn (2021) - T3
+T3.otu <- otu[, blodgett_data$Date=="4/27/2021"] %>%
+  rmv_sngl()
+T3.otu.rel <- relativize(T3.otu)
+colSums(T3.otu.rel)
+T3.map <- subset(blodgett_data, Date=="4/27/2021")
+T3.count <- otu.count[, blodgett_data$Date=="4/27/2021"] %>%
+  rmv_sngl()
+
+# Prescribed Burn (2021) - T4
+T4.otu <- otu[, blodgett_data$Date=="5/8/2021"] %>%
+  rmv_sngl()
+T4.otu.rel <- relativize(T4.otu)
+colSums(T4.otu.rel)
+T4.map <- subset(blodgett_data, Date=="5/8/2021")
+T4.count <- otu.count[, blodgett_data$Date=="5/8/2021"] %>%
+  rmv_sngl()
 
 # 2021 (only control)
 c.otu <- otu[, blodgett_data$Treatment=="Prescribed_Control"] %>%
@@ -201,6 +228,27 @@ colSums(b.otu.rel)
 b.map <- subset(blodgett_data, Treatment=="Prescribed_Burn")
 richness <- colSums(b.otu.rel > 0)
 b.map$Richness <- richness
+b.map.pc1 = left_join(b.map, pc1, by="ID")
+
+# 2021 (only disturbed plots)
+d.otu <- otu[, blodgett_data$Disturbance=="Yes_Burn"] %>%
+  rmv_sngl()
+d.otu.rel <- relativize(d.otu)
+colSums(d.otu.rel)
+d.map <- subset(blodgett_data, Disturbance=="Yes_Burn")
+richness <- colSums(d.otu.rel > 0)
+d.map$Richness <- richness
+d.map.pc1 = left_join(d.map, pc1, by="ID")
+
+# 2021 (only disturbed plots except B1)
+dxB1.otu <- otu[, blodgett_data$Disturbance=="Yes_Burn" & blodgett_data$Plot!="B1"] %>%
+  rmv_sngl()
+dxB1.otu.rel <- relativize(dxB1.otu)
+colSums(dxB1.otu.rel)
+dxB1.map <- subset(blodgett_data, Disturbance=="Yes_Burn" & Plot != "B1")
+richness <- colSums(dxB1.otu.rel > 0)
+dxB1.map$Richness <- richness
+dxB1.map.pc1 = left_join(dxB1.map, pc1, by="ID")
 
 # 2021 (only treatment plots) at 0-3 cm = bs
 bs.otu <- otu[, blodgett_data$Treatment=="Prescribed_Burn"&blodgett_data$Depth=="0-3cm"] %>%
@@ -246,6 +294,8 @@ colSums(bx1.otu.rel)
 bx1.map <- subset(blodgett_data, Treatment=="Prescribed_Burn"&blodgett_data$Plot!="B1")
 richness <- colSums(bx1.otu.rel > 0)
 bx1.map$Richness <- richness
+bx1.map.pc1 = left_join(bx1.map, pc1, by="ID")
+
 
 # 2021 (only treatment plots except B4)
 bx4.otu <- otu[, blodgett_data$Treatment=="Prescribed_Burn"&blodgett_data$Plot!="B4"] %>%
@@ -264,6 +314,7 @@ colSums(pxB1xU1.otu.rel)
 pxB1xU1.map <- subset(blodgett_data, Plot!="U1" & Plot != "B1")
 richness <- colSums(pxB1xU1.otu.rel > 0)
 pxB1xU1.map$Richness <- richness
+pxB1xU1.map.pc1 = left_join(pxB1xU1.map, pc1, by="ID")
 
 # 2021, just B1
 b1.otu <- otu[, blodgett_data$Treatment=="Prescribed_Burn"&blodgett_data$Plot=="B1"] %>%
@@ -579,6 +630,7 @@ variance(b.otu.pcoa, 2)
 pcoa.plot.p.disturbancedepth(b.otu.map, x_col = pcoa1, y_col = pcoa2, color_col= Disturbance, shape_col = Depth, x_label = "8.07% Variance Explained", y_label = "5.76% Variance Explained", title = "Burn Plots Virome", filename = "burn_plots_blodgett_disturbancedepth.pdf")
 pcoa.plot.p.disturbance(b.otu.map, x_col = pcoa1, y_col = pcoa2, color_col= Disturbance, shape_col = Date, x_label = "8.07% Variance Explained", y_label = "5.76% Variance Explained", title = "Burn Plots Viromes", filename = "burn_plots_blodgett_disturbance.pdf")
 pcoa.plot.plot(b.otu.map, x_col = pcoa1, y_col = pcoa2, color_col= Plot, shape_col = Date, x_label = "8.07% Variance Explained", y_label = "5.76% Variance Explained", title = "Burn Plots Viromes", filename = "burn_plots_blodgett_plot.pdf")
+
 # run PERMANOVAs
 variables <- c("Disturbance", "Depth", "Date", "Treatment")
 b.adonis.results <- run_adonis(variables, b.otu.dist, b.otu.map)
@@ -779,6 +831,121 @@ bs.adonis.table <- do.call(rbind, bs.adonis.results)
 
 ```
 
+
+# THIS INCLUDES PC1 DATA!!!
+```{r}
+b.otu.map.pc1 <- pcoa.map(b.otu.pcoa.points, b.map.pc1)
+
+ggplot(b.otu.map.pc1, aes(x=pcoa1, y=pcoa2, color=Comp.1))+
+  geom_point(size = 3) +
+  scale_color_gradient(low = "yellow", high = "red") +
+  labs(x = "8.07% Variance Explained", 
+       y = "5.76% Variance Explained",
+       title = "Burn Plots with PC1 gradient")+
+  theme(axis.title = element_text(size = 16)) +
+  theme(legend.text = element_text(size = 16), legend.position = "right") +
+  theme(legend.title = element_text(size = 16)) +
+  theme(axis.text = element_text(size = 16)) +
+  theme(panel.background=element_rect(fill="white"), 
+      panel.grid.major = element_line(color = "lightgrey"), 
+      panel.grid.minor = element_line(color = "lightgrey"))
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCoA/viromes/Burn_PCoA_PC1.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+
+
+bx1.otu.map.pc1 <- pcoa.map(bx1.otu.pcoa.points, bx1.map.pc1)
+
+ggplot(bx1.otu.map.pc1, aes(x=pcoa1, y=pcoa2, color=Comp.1))+
+  geom_point(size = 3) +
+  scale_color_gradient(low = "yellow", high = "red") +
+  labs(x = "7.7% Variance Explained", 
+       y = "7.4% Variance Explained",
+       title = "Burn Plots Except B1 with PC1 gradient")+
+  theme(axis.title = element_text(size = 16)) +
+  theme(legend.text = element_text(size = 16), legend.position = "right") +
+  theme(legend.title = element_text(size = 16)) +
+  theme(axis.text = element_text(size = 16)) +
+  theme(panel.background=element_rect(fill="white"), 
+      panel.grid.major = element_line(color = "lightgrey"), 
+      panel.grid.minor = element_line(color = "lightgrey"))
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCoA/viromes/BurnxB1_PCoA_PC1.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+
+pxB1xU1.otu.map.pc1 <- pcoa.map(pxB1xU1.otu.pcoa.points, pxB1xU1.map.pc1)
+
+ggplot(pxB1xU1.otu.map.pc1, aes(x=pcoa1, y=pcoa2, color=Comp.1, shape = Disturbance))+
+  geom_point(size = 3) +
+  scale_color_gradient(low = "yellow", high = "red") +
+  labs(x = "5.9% Variance Explained", 
+       y = "5.6% Variance Explained",
+       title = "All Plots Except B1 and U1 with PC1 gradient")+
+  theme(axis.title = element_text(size = 16)) +
+  theme(legend.text = element_text(size = 16), legend.position = "right") +
+  theme(legend.title = element_text(size = 16)) +
+  theme(axis.text = element_text(size = 16)) +
+  theme(panel.background=element_rect(fill="white"), 
+      panel.grid.major = element_line(color = "lightgrey"), 
+      panel.grid.minor = element_line(color = "lightgrey"))
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCoA/viromes/AllxB1xU1_PCoA_PC1.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+
+
+#### with NEW PC1 comp.1
+# Just disturbed Plots (2021)
+d.otu.dist <- distance(d.otu.rel)
+d.otu.pcoa <- pcoa(d.otu.dist)
+d.otu.pcoa.points <- pcoa.points(d.otu.pcoa)
+d.otu.map <- pcoa.map(d.otu.pcoa.points, blodgett_data)
+variance(d.otu.pcoa, 1)
+variance(d.otu.pcoa, 2)
+
+d.otu.map.pc1 <- pcoa.map(d.otu.pcoa.points, d.map.pc1)
+
+ggplot(d.otu.map.pc1, aes(x=pcoa1, y=pcoa2, color=Comp.1, shape = Plot))+
+  geom_point(size = 3) +
+  scale_color_gradient(low = "yellow", high = "red") +
+  labs(x = "12.87% Variance Explained", 
+       y = "10.3% Variance Explained",
+       title = "All Disturbed Samples")+
+  theme(axis.title = element_text(size = 16)) +
+  theme(legend.text = element_text(size = 16), legend.position = "right") +
+  theme(legend.title = element_text(size = 16)) +
+  theme(axis.text = element_text(size = 16)) +
+  theme(panel.background=element_rect(fill="white"), 
+      panel.grid.major = element_line(color = "lightgrey"), 
+      panel.grid.minor = element_line(color = "lightgrey"))
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCoA/viromes/Disturbed_PCoA_PC1.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+
+# Just disturbed Plots except B1 (2021)
+dxB1.otu.dist <- distance(dxB1.otu.rel)
+dxB1.otu.pcoa <- pcoa(dxB1.otu.dist)
+dxB1.otu.pcoa.points <- pcoa.points(dxB1.otu.pcoa)
+dxB1.otu.map <- pcoa.map(dxB1.otu.pcoa.points, blodgett_data)
+variance(dxB1.otu.pcoa, 1)
+variance(dxB1.otu.pcoa, 2)
+
+dxB1.otu.map.pc1 <- pcoa.map(dxB1.otu.pcoa.points, dxB1.map.pc1)
+
+ggplot(dxB1.otu.map.pc1, aes(x=pcoa1, y=pcoa2, color=Comp.1, shape = Depth))+
+  geom_point(size = 3) +
+  scale_color_gradient(low = "yellow", high = "red") +
+  labs(x = "13.95% Variance Explained", 
+       y = "12.65% Variance Explained",
+       title = "All Disturbed Samples except B1")+
+  theme(axis.title = element_text(size = 16)) +
+  theme(legend.text = element_text(size = 16), legend.position = "right") +
+  theme(legend.title = element_text(size = 16)) +
+  theme(axis.text = element_text(size = 16)) +
+  theme(panel.background=element_rect(fill="white"), 
+      panel.grid.major = element_line(color = "lightgrey"), 
+      panel.grid.minor = element_line(color = "lightgrey"))
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCoA/viromes/DisturbedxB1_PCoA_PC1.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
+
+
+
 # NMDS
 ```{r}
 bs.otu.dist <- distance(bs.otu.rel)
@@ -880,6 +1047,12 @@ nmds_plot +
                 segment.size = 0.2,                 # Size of the segment connecting label to point
                 min.segment.length = unit(0.1, "lines"))
 ggsave("b.nmds.pdf", width = 200, height = 100, units = "mm", dpi = 500)
+```
+
+# RDA
+```{r}
+p.otu.rel
+b.chem.ID
 ```
 
 # Richness
@@ -1764,6 +1937,66 @@ hostphylum <- ggsave("2021beforeburnhostblodgett_phylum.pdf", width = 200, heigh
 ```
 
 
+# Prescribed burn only - treatment plots, disturbed (d)
+```{r}
+library(dplyr)
+
+# name row.names of d.otu.rel
+d.otu.rel.otu <- d.otu.rel %>%
+  rownames_to_column(var = "OTU")
+d.otu.rel.phylum <- merge(iphop.phylum, d.otu.rel.otu, by = "OTU", all.y = TRUE)
+
+# replace NA Host Phylum with "unknown"
+d.otu.rel.phylum <- d.otu.rel.phylum %>% mutate(HostPhylum = ifelse(is.na(HostPhylum), "Unknown", HostPhylum))
+# remove OTU column
+d.otu.rel.phylum <- d.otu.rel.phylum %>% select(-OTU) 
+d.otu.phylum.long <- pivot_longer(d.otu.rel.phylum, cols=2:28, names_to = "ID", values_to = "RelAbd")
+d.otu.phylum.stack <- d.otu.phylum.long %>%
+  group_by(HostPhylum, ID) %>%
+  dplyr::summarize(RelAbd=sum(RelAbd))
+d.otu.phylum.stack <- d.otu.phylum.stack %>%
+  group_by(HostPhylum) %>%
+  mutate(NewHostPhylum = ifelse(all(RelAbd < 0.001), 'Other', HostPhylum)) %>%
+  ungroup()
+
+# Prep data frame for plotting
+d.otu.phylum.map <- merge(d.otu.phylum.stack, d.map.pc1, by="ID")
+d.otu.phylum.map <- d.otu.phylum.map[d.otu.phylum.map$NewHostPhylum != "Unknown", ]
+
+d.otu.phylum.map <- d.otu.phylum.map %>% 
+  mutate(Order = case_when(
+    Date == "4/5/2021" ~ "T1",
+    Date == "4/18/2021" ~ "T2", 
+    Date == "4/27/2021" ~ "T3", 
+    Date == "5/8/2021" ~ "T4")) %>%
+  arrange(Order) %>%
+  mutate(TreatRep = paste(Order, SubPlot, Depth)) %>%
+  arrange(TreatRep)
+
+unique(d.otu.phylum.map$NewHostPhylum)
+
+d.otu.phylum.map <- d.otu.phylum.map %>%
+  arrange(Comp.1) %>%
+  mutate(rank = dense_rank(Comp.1))
+
+
+
+
+
+# Plot
+hostphylum <- ggplot(d.otu.phylum.map, aes(x=rank, y=RelAbd, fill=NewHostPhylum))+
+    labs(x="Sample ID", 
+       y ="Relative Abundance",
+       title = "Prescribed Burn - Treatment Plots, Disturbed - vOTU Host Prediction by Sample")+
+  geom_bar(stat="identity")+
+  scale_fill_manual(values=collapsed_phylum_colors) +
+  #geom_vline(xintercept = c(16.5, 32.5, 47.5), linetype = "solid", color = "black", size = 0.75)+
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5),
+        legend.position = "bottom")
+hostphylum <- ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/StackedBar/HostPhylum/burn_disturbed_PC1_phylum.pdf", width = 250, height = 150, units = "mm", dpi = 500)
+```
+
 # Host Prediction Stats
 # Burn, Surface
 ```{r}
@@ -2217,5 +2450,45 @@ u2a.pa <- p.pa[, c("USV9", "UDV9")]
 u2a.pa <- as.data.frame(u2a.pa)
 top.u2a.pa <- u2a.pa[u2a.pa$USV9 & !u2a.pa$UDV9, ]
 bottom.u2a.pa <- u2a.pa[!u2a.pa$USV9 & u2a.pa$UDV9, ]
+```
+
+
+# DirichletMultinomial for Clustering and Classification of Microbiome Data
+# I just don't understand this...
+```{r}
+library(lattice)
+library(parallel)
+library(xtable)
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("DirichletMultinomial")
+# start with clean environment (or install in regular R)
+
+library(DirichletMultinomial)
+
+options(width=70, digits=2)
+full <- FALSE
+.qualitative <- DirichletMultinomial:::.qualitative
+dev.off <- function(...) invisible(grDevices::dev.off(...))
+
+
+data_count <- t(as.matrix(T3.count))
+data_count
+cnts <- log10(colSums(data_count))
+densityplot(cnts, xlim=range(cnts),
+            xlab="vOTU representation (log 10 count)")
+
+# this shows that most vOTUs have counts around 1000
+
+if (full) {
+  fit <- mclapply(1:7, dmn, count = data_count, verbose=TRUE)
+} else data(fit)
+fit[[4]]
+lplc <- sapply(fit, laplace)
+plot(lplc, type="b", xlab = "Number of Dirichlet Components",
+     ylab = "Model Fit")
+
+
 ```
 

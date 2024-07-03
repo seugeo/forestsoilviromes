@@ -8,6 +8,16 @@ date: "2024-03-02"
 library(tidyverse)
 library(dplyr)
 library(geosphere)
+library(factoextra)
+library(gglm)
+library(pheatmap)
+library(Hmisc)
+library(gridExtra)
+library(RColorBrewer)
+library(grid)
+library(broom)
+library(cowplot)
+library(lubridate)
 ```
 
 # DISTANCE DATA
@@ -439,6 +449,13 @@ cs.chem.ID=cs.metadata %>%
 ```
 
 
+# All plots that have viromes
+```{r}
+v.metadata <- subset(chem_blodgett, virome=="yes")
+v.chem.ID=v.metadata %>%
+  select(-OrganicNRelease, -OrganicPRelease, -SoilHealthCalculation, -OrganicNInorganicN, -WDRFBuffer, -OrganicNReserve, -OrganicPReserve, -AltID, -virome, -Disturbance, -Plot, -SubPlot, -Date, -Treatment, -Burn, -Depth)
+```
+
 # DENDROGRAMS AND HEATMAPS
 ```{r}
 # Load libraries
@@ -804,63 +821,65 @@ b.nut.p
 ggsave("b_hm.pdf", width = 500, height = 400, units = "mm", dpi = 500)
 ```
 
+# Correlation b/t microbiome and chemical properties
+```{r}
+p.phylum.long <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/p.phylum.long.RDS")
+microbiome_data <- p.phylum.long %>%
+  pivot_wider(names_from = Phylum, values_from = counts, values_fill = list(counts = 0))
+microbiome_data <- as.data.frame(microbiome_data)
+
+  
+chemical_data <- b.chem.ID
+chemical_data <- chemical_data %>%
+  mutate(SampleID = gsub("V", "M", SampleID)) %>%
+  mutate(SampleID = ifelse(SampleID == "UDM24D", "UDM24", SampleID))
+colnames(chemical_data)[colnames(chemical_data) == "SampleID"] <- "MapID"
+chemical_data = left_join(p_map, chemical_data, by="MapID")
+chemical_data <- chemical_data[, -c(2:14)]
+
+# Check that the dataframes have the same row names
+identical(chemical_data$ID, microbiome_data$ID)
+
+# Remove ID columns
+microbiome_data <- microbiome_data %>% select(-ID)
+chemical_data <- chemical_data %>% select(-ID)
+
+# Compute the correlation matrix
+cor_matrix <- rcorr(as.matrix(microbiome_data), as.matrix(chemical_data))
+cor_values <- cor_matrix$r
+cor_pvalues <- cor_matrix$P
+
+microbiome_indices <- c(1:30)
+chemical_indices <- c(31:59)
+cor_values_subset <- cor_values[microbiome_indices, chemical_indices]
+cor_pvalues_subset <- cor_pvalues[microbiome_indices, chemical_indices]
+sig_matrix <- ifelse(cor_pvalues_subset < 0.05, "*", "")
+
+# Create a combined data frame with correlations and p-values
+cor_values[is.na(cor_values_subset)] <- 0  # Replace NA correlations with 0 for visualization
+
+p <- pheatmap(cor_values_subset,
+   clustering_distance_rows = "euclidean",
+   clustering_distance_cols = "euclidean",
+   clustering_method = "complete",
+   main = "Correlation Heatmap of Microbiome and Chemical Properties",
+   color = colorRampPalette(rev(brewer.pal(n = 7, name = "RdYlBu")))(100),
+  display_numbers = FALSE)
+
+# Modify row and column labels to include "*" for significant correlations
+p$tree_row$labels <- paste0(p$tree_row$labels, ifelse(cor(row(cor_values_subset)) < 0.05, "*", ""))
+p$tree_col$labels <- paste0(p$tree_col$labels, ifelse(cor(col(cor_values_subset)) < 0.05, "*", ""))
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/HeatMap_Dendrogram/correlation_heatmap.pdf",
+       plot = p$gtable, width = 10, height = 8)
 
 
-
+display.brewer.all()
+```
 
 # ENVIRONMENTAL PCA
-```{r}
-library(broom)
-library(cowplot)
-library(tidyverse)
-library(lubridate)
-```
 # All plots (b - blodgett)
 ```{r}
-if(any(is.na(b.nut.mtx))) {
-  print("Data contains missing values. Please handle them before PCA.")
-} else {
-  print("No missing values found.")
-}
-
-pca_fit <- princomp(b.nut.mtx, cor = TRUE)
-loadings <- pca_fit$loadings
-print(loadings)
-
-
-
-loadings(pca_fit)
-scree_plot <- data.frame(PC = 1:length(pca_fit$sdev),
-                         Variance = pca_fit$sdev^2 / sum(pca_fit$sdev^2))
-
-ggplot(scree_plot, aes(x = PC, y = Variance)) +
-  geom_line() +
-  geom_point() +
-  xlab("Principal Component") +
-  ylab("Proportion of Variance Explained") +
-  ggtitle("Scree Plot")
-
-pca_var <- pca_fit$sdev^2
-pca_var_explained <- pca_var / sum(pca_var)
-
-scree_plot <- data.frame(PC = 1:length(pca_fit$sdev),
-                         Variance = pca_var_explained)
-
-ggplot(scree_plot, aes(x = PC, y = Variance)) +
-  geom_line() +
-  geom_point() +
-  xlab("Principal Component") +
-  ylab("Proportion of Variance Explained") +
-  ggtitle("Scree Plot")
-
-loadings <- pca_fit$rotation
-print(loadings)
-
-
-saveRDS(b.chem.ID, "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/b.chem.ID.RDS")
-
-
-
 #Environmental distance analysis
 #Remove variables with no variation, z-transform each variable, and format it as a matrix
 b.nut.mtx <- nutmtx(b.chem.ID)
@@ -908,6 +927,159 @@ b_disturbance <- ggplot(b.map.pca, aes(x=pca1, y=pca2, color=Disturbance, shape 
 ggsave("b_disturbance_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500)
 
 ```
+
+# LOADINGS
+```{r}
+pca_fit <- princomp(b.nut.mtx, cor = TRUE)
+scores <- as.data.frame(pca_fit$scores)
+loadings <- as.data.frame(pca_fit$loadings[, 1:2])
+
+pca_plot <- ggplot(scores, aes(x = Comp.1, y = Comp.2)) +
+  geom_point(size = 2) +  # Plot individual samples
+  geom_segment(data = loadings,
+               aes(x = 0, y = 0, xend = Comp.1 * 20, yend = Comp.2 * 20),  # Scale the vectors for better visibility
+               arrow = arrow(length = unit(0.2, "cm")),
+               color = "blue", linewidth = 1) +
+  geom_text(data = loadings, 
+            aes(x = Comp.1 * 20, y = Comp.2 * 20, label = rownames(loadings)), 
+            vjust = 1.5, color = "red") +
+  theme_minimal() +
+  labs(title = "PCA Plot with Variable Vectors",
+       x = "Principal Component 1",
+       y = "Principal Component 2")
+
+# Extract PC1 scores
+pc1_scores <- as.data.frame(pca_fit$scores)[, 1]
+
+pc1 <- scores %>% select(1)
+
+# Extract loadings for PC1
+pc1_loadings <- as.data.frame(pca_fit$loadings[, 1])
+colnames(pc1_loadings) <- c("Loadings")
+pc1_loadings$Variables <- rownames(pc1_loadings)
+
+# Plot the loadings for PC1
+ggplot(pc1_loadings, aes(x = Variables, y = Loadings, fill = Variables)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  theme(legend.position = "none") +
+  labs(title = "Loadings of Variables on PC1",
+       x = "Variables",
+       y = "Loadings")
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCA/PC1_loadings.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
+
+# correlation between PC1 scores and virome
+```{r}
+T3.pc1
+T3.otu.corr <- t(T3.otu.rel)
+
+# Remove ID columns
+T3.pc1 <- T3.pc1 %>% select(-ID)
+
+combined_data <- data.frame(T3.otu.corr, T3.pc1)
+
+# Compute the correlation matrix
+help(rcorr)
+getAnywhere(rcorr)
+cor_matrix <- rcorr(as.matrix(combined_data))
+cor_values <- cor_matrix$r
+cor_pvalues <- cor_matrix$P
+
+```
+
+
+# Corncob
+
+```{r}
+library(remotes)
+#remotes::install_github("statdivlab/corncob")
+library(corncob)
+library(magrittr)
+
+pc1 <- as.data.frame(pc1)
+pc1 <- rownames_to_column(pc1, var = "ID")
+
+# also subset with just one time point at a time (remove time component)
+# and then do minimum threshold - find them in x number of sample (base this on replicates...or something like that, present in a percentage of the samples)
+# also... T3.map is from the Ch2Blodgett_virome.Rmd
+# T3
+T3.pc1 <- semi_join(pc1, T3.map, by = "ID")
+T3.otu.da <- T3.count
+T3.otu.da <- T3.otu.da[rowSums(T3.otu.da>1) >22,]
+
+#make sure Comp.1 is numeric
+T3.pc1 <- as.data.frame(T3.pc1)
+T3.pc1 <- col_to_row(T3.pc1, "ID", "ID")
+
+set.seed(1)
+T3_da_analysis <- differentialTest(formula = ~ Comp.1,
+                                phi.formula = ~ Comp.1,
+                                formula_null = ~ 1,
+                                phi.formula_null = ~ Comp.1,
+                                test = "Wald", boot = FALSE,
+                                data = T3.otu.da, 
+                                sample_data = T3.pc1, 
+                                taxa_are_rows = TRUE, 
+                                fdr_cutoff = 0.05)
+T3_da_analysis
+T3_da_analysis$significant_taxa
+plot(T3_da_analysis)
+
+# T4
+T4.pc1 <- semi_join(pc1, T4.map, by = "ID")
+T4.otu.da <- T4.count
+T4.otu.da <- T4.otu.da[rowSums(T4.otu.da>1) >19,]
+T4.pc1 <- as.data.frame(T4.pc1)
+T4.pc1 <- col_to_row(T4.pc1, "ID", "ID")
+
+set.seed(1)
+T4_da_analysis <- differentialTest(formula = ~ Comp.1,
+                                phi.formula = ~ Comp.1,
+                                formula_null = ~ 1,
+                                phi.formula_null = ~ Comp.1,
+                                test = "Wald", boot = FALSE,
+                                data = T4.otu.da, 
+                                sample_data = T4.pc1, 
+                                taxa_are_rows = TRUE, 
+                                fdr_cutoff = 0.05)
+T4_da_analysis
+T4_da_analysis$significant_taxa
+plot(T4_da_analysis)
+
+# as PC1 increases, these vOTUs are increasing/decreasing
+# post combining - p-value correct 
+
+# Questions to ask Amisha ---
+# Confirm that this will only work on count data
+# Reasonable thresholds for the analysis... 
+  # some ideas... at least 1 in every single sample? 
+  # at least some large amount in at least 8 samples...because this would mean maybe they were all found in the control samples
+  # additional p-value?
+
+
+# correlations between vOTUs and PC1 scores
+
+# map a distribution of PC1 scores
+plot(hist(pc1$Comp.1))
+
+
+
+#hellinger transformation on vOTU abundances
+#vOTU abundances and PC1 scores - regress (spearman correlation - rank)
+# corect p-values 
+
+
+
+
+```
+
+
+
+
 ```{r}
 # Generalized Linear Model
 b.map <- b.map %>%
@@ -920,12 +1092,33 @@ b.map$Burn <- relevel(b.map$Burn, ref = "Before")
 #cat(paste(colnames(b.map), collapse = ", "))
 chemistry <- c("Aluminum", "Ammonium", "AvailableK", "AvailableN", "AvailableP", "Calcium", "CO2C", "Copper", "InorganicNitrogen", "InorganicPhosphorus", "Iron", "MAC", "Magnesium", "Manganese", "Moisture", "Nitrate", "OrganicCN", "OrganicMatter", "OrganicN", "OrganicPhosphorus", "Potassium", "Sodium", "SoilpH", "SolubleSalt", "Sulfur", "TotalN", "TotalOrganicC", "TotalPhosphorus", "Zinc")
 glm_results <- lapply(chemistry, function(prop) {
-  formula <- as.formula(paste(prop, "~ Treatment * Burn"))
+  formula <- as.formula(paste(prop, "~ Treatment * Burn * Depth"))
   glm(formula, data = b.map)
 })
 
 names(glm_results) <- chemistry
 lapply(glm_results, summary)
+
+hist(b.chem.ID$InorganicNitrogen)
+hist(b.chem.ID$OrganicMatter)
+hist(b.chem.ID$SoilpH)
+
+model <- lm(InorganicNitrogen ~ factor(Burn)*factor(Disturbance), b.map)
+plot(model)
+
+glm_IN <- glm(InorganicNitrogen ~ Burn + Disturbance,
+              family = poisson(link="log"),
+              data = b.metadata)
+summary(glm_IN)
+
+M <- cor(b.nut.mtx)
+install.packages("corrplot")
+library(corrplot)
+corrplot(M, method = "circle")
+
+
+## add DNA yield
+
 ```
 # All plots, no june
 ```{r}
@@ -1240,6 +1433,54 @@ ggplot(d.map.pca, aes(x=pca1, y=pca2, color=Plot, shape = Date))+
 ggsave("disturbance_plot_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500)
 ```
 
+```{r}
+pca_fit <- princomp(d.nut.mtx, cor = TRUE)
+scores <- as.data.frame(pca_fit$scores)
+loadings <- as.data.frame(pca_fit$loadings[, 1:2])
+
+pca_plot <- ggplot(scores, aes(x = Comp.1, y = Comp.2)) +
+  geom_point(size = 2) +  # Plot individual samples
+  geom_segment(data = loadings,
+               aes(x = 0, y = 0, xend = Comp.1 * 20, yend = Comp.2 * 20),  # Scale the vectors for better visibility
+               arrow = arrow(length = unit(0.2, "cm")),
+               color = "blue", linewidth = 1) +
+  geom_text(data = loadings, 
+            aes(x = Comp.1 * 20, y = Comp.2 * 20, label = rownames(loadings)), 
+            vjust = 1.5, color = "red") +
+  theme_minimal() +
+  labs(title = "PCA Plot with Variable Vectors",
+       x = "Principal Component 1",
+       y = "Principal Component 2")
+
+# Extract PC1 scores
+pc1_scores <- as.data.frame(pca_fit$scores)[, 1]
+
+pc1 <- scores %>% select(1)
+
+# Extract loadings for PC1
+pc1_loadings <- as.data.frame(pca_fit$loadings[, 1])
+colnames(pc1_loadings) <- c("Loadings")
+pc1_loadings$Variables <- rownames(pc1_loadings)
+
+# Plot the loadings for PC1
+ggplot(pc1_loadings, aes(x = Variables, y = Loadings, fill = Variables)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  theme(legend.position = "none") +
+  labs(title = "Loadings of Variables on PC1",
+       x = "Variables",
+       y = "Loadings")
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCA/PC1_loadings.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+
+pc1 <- as.data.frame(pc1)
+pc1 <- rownames_to_column(pc1, var = "ID")
+
+
+```
+
 # Burn plots, after, no june (dnj - disturbance no june)
 ```{r}
 #Environmental distance analysis
@@ -1502,6 +1743,8 @@ ggplot(c.map.pca, aes(x=pca1, y=pca2, color=Date, shape = Plot))+
 ggsave("control_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500)
 ```
 
+
+# All plots that have viromes
 
 # animate
 ```{r}

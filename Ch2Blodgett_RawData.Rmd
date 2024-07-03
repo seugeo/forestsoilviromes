@@ -24,6 +24,18 @@ otu$N2_S62_L004 <- NULL
 saveRDS(otu, "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/blodgett_all_otu.RDS")
 ```
 
+# VIROME COUNT TABLE
+```{r}
+# LOAD COUNT TABLE
+otu.count=read_delim("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/input data/all.count.tsv", delim = "\t", col_names = TRUE)
+otu.count <- col_to_row(otu.count, "Contig", "contignames")
+colnames(otu.count) <- gsub(pattern=".vib.sI.Read.Count", replacement = "", x=colnames(otu.count))
+otu.count=otu.count%>%
+  select(-N1_S61_L004, -N2_S62_L004)
+# save RDS file
+saveRDS(otu.count, "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/blodgett.otu.count.RDS")
+```
+
 # VIROME METADATA
 ```{r}
 # heat metadata
@@ -101,6 +113,9 @@ blodgett_data = left_join(blodgett_data, k_cluster_env, by="ID")
 blodgett_data <- blodgett_data %>%
   mutate(Cluster = as.character(Cluster))
 
+# make sure IDs are identical in count and metadata tables
+identical(colnames(otu.count), blodgett_data$ID)
+
 saveRDS(blodgett_data, "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/blodgett_all_metadata.RDS")
 
 # DNA Yields
@@ -153,10 +168,8 @@ all_map=read_delim("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Fi
 #change SampleID to ID
 colnames(all_map)[colnames(all_map) == "SampleID"] <- "ID"
 #subset blodgett 16S data
-blodgett.asv <- asv_filtered[,all_map$Location=="Blodgett"]
+blodgett.asv <- asv_filtered[,all_map$Experiment=="Heat"]
 blodgett.asv <- subset(blodgett.asv, select = -c(FIRE061, FIRE060))
-
-lnu.asv <- asv_filtered[,all_map$Experiment=="Wildfire"]
 
 # PREP ABUNDANCE DATA
 #do some other things to prep data frame
