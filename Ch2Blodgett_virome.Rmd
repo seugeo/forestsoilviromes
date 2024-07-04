@@ -239,6 +239,7 @@ d.map <- subset(blodgett_data, Disturbance=="Yes_Burn")
 richness <- colSums(d.otu.rel > 0)
 d.map$Richness <- richness
 d.map.pc1 = left_join(d.map, pc1, by="ID")
+d.pc1.map = left_join(pc1, d.map, by="ID")
 
 # 2021 (only disturbed plots except B1)
 dxB1.otu <- otu[, blodgett_data$Disturbance=="Yes_Burn" & blodgett_data$Plot!="B1"] %>%
@@ -917,6 +918,12 @@ ggplot(d.otu.map.pc1, aes(x=pcoa1, y=pcoa2, color=Comp.1, shape = Plot))+
 
 ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCoA/viromes/Disturbed_PCoA_PC1.pdf", width = 200, height = 125, units = "mm", dpi = 500)
 
+Comp.1 <- d.map.pc1$Comp.1
+Comp.1.dist <- dist(Comp.1)
+
+mantel_test <- mantel(d.otu.dist, Comp.1.dist)
+mantel_test
+
 # Just disturbed Plots except B1 (2021)
 dxB1.otu.dist <- distance(dxB1.otu.rel)
 dxB1.otu.pcoa <- pcoa(dxB1.otu.dist)
@@ -942,6 +949,13 @@ ggplot(dxB1.otu.map.pc1, aes(x=pcoa1, y=pcoa2, color=Comp.1, shape = Depth))+
       panel.grid.minor = element_line(color = "lightgrey"))
 
 ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCoA/viromes/DisturbedxB1_PCoA_PC1.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+
+Comp.1 <- dxB1.map.pc1$Comp.1
+Comp.1.dist <- dist(Comp.1)
+
+mantel_test <- mantel(dxB1.otu.dist, Comp.1.dist)
+mantel_test
+
 ```
 
 
@@ -1941,8 +1955,15 @@ hostphylum <- ggsave("2021beforeburnhostblodgett_phylum.pdf", width = 200, heigh
 ```{r}
 library(dplyr)
 
+missing_columns <- setdiff(pc1$ID, colnames(d.otu.rel))
+missing_columns
+d.otu.rel.allsamples <- d.otu.rel
+for (col in missing_columns) {
+  d.otu.rel.allsamples[[col]] <- NA
+}
+
 # name row.names of d.otu.rel
-d.otu.rel.otu <- d.otu.rel %>%
+d.otu.rel.otu <- d.otu.rel.allsamples %>%
   rownames_to_column(var = "OTU")
 d.otu.rel.phylum <- merge(iphop.phylum, d.otu.rel.otu, by = "OTU", all.y = TRUE)
 
@@ -1950,7 +1971,7 @@ d.otu.rel.phylum <- merge(iphop.phylum, d.otu.rel.otu, by = "OTU", all.y = TRUE)
 d.otu.rel.phylum <- d.otu.rel.phylum %>% mutate(HostPhylum = ifelse(is.na(HostPhylum), "Unknown", HostPhylum))
 # remove OTU column
 d.otu.rel.phylum <- d.otu.rel.phylum %>% select(-OTU) 
-d.otu.phylum.long <- pivot_longer(d.otu.rel.phylum, cols=2:28, names_to = "ID", values_to = "RelAbd")
+d.otu.phylum.long <- pivot_longer(d.otu.rel.phylum, cols=2:49, names_to = "ID", values_to = "RelAbd")
 d.otu.phylum.stack <- d.otu.phylum.long %>%
   group_by(HostPhylum, ID) %>%
   dplyr::summarize(RelAbd=sum(RelAbd))
@@ -1960,7 +1981,7 @@ d.otu.phylum.stack <- d.otu.phylum.stack %>%
   ungroup()
 
 # Prep data frame for plotting
-d.otu.phylum.map <- merge(d.otu.phylum.stack, d.map.pc1, by="ID")
+d.otu.phylum.map <- merge(d.otu.phylum.stack, d.pc1.map, by="ID")
 d.otu.phylum.map <- d.otu.phylum.map[d.otu.phylum.map$NewHostPhylum != "Unknown", ]
 
 d.otu.phylum.map <- d.otu.phylum.map %>% 
@@ -1979,10 +2000,6 @@ d.otu.phylum.map <- d.otu.phylum.map %>%
   arrange(Comp.1) %>%
   mutate(rank = dense_rank(Comp.1))
 
-
-
-
-
 # Plot
 hostphylum <- ggplot(d.otu.phylum.map, aes(x=rank, y=RelAbd, fill=NewHostPhylum))+
     labs(x="Sample ID", 
@@ -1990,10 +2007,16 @@ hostphylum <- ggplot(d.otu.phylum.map, aes(x=rank, y=RelAbd, fill=NewHostPhylum)
        title = "Prescribed Burn - Treatment Plots, Disturbed - vOTU Host Prediction by Sample")+
   geom_bar(stat="identity")+
   scale_fill_manual(values=collapsed_phylum_colors) +
-  #geom_vline(xintercept = c(16.5, 32.5, 47.5), linetype = "solid", color = "black", size = 0.75)+
-  theme_bw() +
+  geom_vline(xintercept = c(0.5,1.5,2.5,3.5,4.5,5.5,6.5,7.5,8.5,9.5,10.5,11.5,12.5,13.5,14.5,15.5,16.5,17.5,18.5,19.5,20.5,21.5,22.5,23.5,24.5,25.5,26.5,27.5,28.5,29.5,30.5,31.5,32.5,33.5,34.5,35.5,36.5,37.5,38.5,39.5,40.5, 41.5,42.5,43.5,44.5,45.5, 46.5, 47.5, 48.5), linetype = "solid", color = "darkgray", linewidth = 0.15)+
+  theme(
+    panel.grid.major = element_blank(),  # Remove major grid lines
+    panel.grid.minor = element_blank(),  # Remove minor grid lines
+    panel.background = element_blank()
+  ) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5),
-        legend.position = "bottom")
+        legend.position = "bottom") +
+  scale_x_continuous(limits = c(0.5,48.5), expand = c(0,0))+
+  scale_y_continuous(limits = c(0, 0.5), expand = c(0,0))
 hostphylum <- ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/StackedBar/HostPhylum/burn_disturbed_PC1_phylum.pdf", width = 250, height = 150, units = "mm", dpi = 500)
 ```
 

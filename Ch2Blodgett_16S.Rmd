@@ -237,6 +237,7 @@ bd.asv <- p.asv[,p_map$Disturbance=="Yes_Burn"] %>%
   rmv_sngl()
 bd_map <- subset(p_map, Disturbance=="Yes_Burn")
 bd_map.pc1 = left_join(bd_map, pc1_asv, by="MapID")
+bd_pc1.map = left_join(pc1_asv, bd_map, by="MapID")
 
 #check if samples are identical
 identical(colnames(bd.asv), bd_map$ID)
@@ -425,6 +426,12 @@ ggplot(bd.asv.map.pc1, aes(x=pcoa1, y=pcoa2, color=Comp.1))+
       panel.grid.minor = element_line(color = "lightgrey"))
 
 ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCoA/prokaryotes/Burn_Disturbed_PC1_PCOA.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+
+Comp.1 <- bd_map.pc1$Comp.1
+Comp.1.dist <- dist(Comp.1)
+
+mantel_test <- mantel(bd.asv.dist, Comp.1.dist)
+mantel_test
 
 ```
 
@@ -786,8 +793,21 @@ b_phylum <- ggsave("b_phylum.pdf", width = 350, height = 100, units = "mm", dpi 
 # burn plots, disturbed samples (bd)
 ```{r}
 # Join taxonomy and abundance data together
+
+# add in missing columns
+mapping <- setNames(bd_map$MapID, bd_map$ID)
+mapping
+colnames(bd.asv.rare) <- mapping[colnames(bd.asv.rare)]
+missing_columns <- setdiff(pc1_asv$MapID, colnames(bd.asv.rare))
+missing_columns
+bd.asv.rare.allsamples <- bd.asv.rare
+for (col in missing_columns) {
+  bd.asv.rare.allsamples[[col]] <- NA
+}
+
+
 # first, add OTU_ID back as a column
-bd.id.asv <- bd.asv.rare
+bd.id.asv <- bd.asv.rare.allsamples
 bd.id.asv$OTU_ID <- rownames(bd.id.asv)
 tax_bd <- left_join(bd.id.asv, tax_filtered, by = "OTU_ID")
 # make sure blodgett.asv is in the same order as tax_blodgett (return = TRUE)
@@ -795,8 +815,8 @@ check_column <- "OTU_ID"
 all(bd.id.asv[[check_column]] == tax_bd[[check_column]])
 unique(tax_bd$Phylum)
 # pivot table and group by Phylum
-tax_bd.long <- pivot_longer(tax_bd, cols=1:45, names_to = "ID", values_to = "counts")
-bd.phylum.long <- group_by(tax_bd.long, Phylum, ID) %>%
+tax_bd.long <- pivot_longer(tax_bd, cols=1:48, names_to = "MapID", values_to = "counts")
+bd.phylum.long <- group_by(tax_bd.long, Phylum, MapID) %>%
   dplyr::summarize(counts=sum(counts))
 
 # rarefied to 20100
@@ -810,14 +830,14 @@ bd.phylum.long <- bd.phylum.long %>%
 unique(bd.phylum.long$NewPhylum)
 
 # Prep data frame for plotting
-bd.phylum.map <- merge(bd.phylum.long, bd_map.pc1, by="ID")
+bd.phylum.map <- merge(bd.phylum.long, bd_pc1.map, by="MapID")
 
 # Arrange samples by Comp.1
 bd.phylum.map <- bd.phylum.map %>%
   arrange(Comp.1) %>%
   mutate(rank = dense_rank(Comp.1))
 
-# Plot (I believe this would summarize both depths into each subplot)
+# Plot (I believe this would be every single sample)
 bd_phylum <- ggplot(bd.phylum.map, aes(x=rank, y=counts, fill=factor(NewPhylum, level=collapsed_phyla_order)))+
     labs(x="Sample", 
        y ="Counts",
@@ -825,9 +845,16 @@ bd_phylum <- ggplot(bd.phylum.map, aes(x=rank, y=counts, fill=factor(NewPhylum, 
   geom_bar(stat="identity", position = "fill", width = 0.75)+
   #geom_vline(xintercept = c(8.5, 16.5, 24.5, 32.5), linetype = "solid", color = "black", size = 0.75)+
   scale_fill_manual(values=collapsed_phylum_colors) +
-  theme_bw() +
+  geom_vline(xintercept = c(0.5,1.5,2.5,3.5,4.5,5.5,6.5,7.5,8.5,9.5,10.5,11.5,12.5,13.5,14.5,15.5,16.5,17.5,18.5,19.5,20.5,21.5,22.5,23.5,24.5,25.5,26.5,27.5,28.5,29.5,30.5,31.5,32.5,33.5,34.5,35.5,36.5,37.5,38.5,39.5,40.5, 41.5,42.5,43.5,44.5,45.5,46.5, 47.5, 48.5), linetype = "solid", color = "darkgray", linewidth = 0.15)+
+  scale_x_continuous(limits = c(0.5,48.5), expand = c(0,0))+
+  theme(
+    panel.grid.major = element_blank(),  # Remove major grid lines
+    panel.grid.minor = element_blank(),  # Remove minor grid lines
+    panel.background = element_blank()
+  ) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5),
-        legend.position = "none")
+        legend.position = "bottom")
+
 bd_phylum
 bd_phylum <- ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/StackedBar/ASVPhylum/bd_phylum_PC1.pdf", width = 350, height = 100, units = "mm", dpi = 500)
 ```

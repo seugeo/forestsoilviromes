@@ -345,8 +345,10 @@ b.metadata <- b.metadata %>%
     Date == "4/27/2021" ~ "T3", 
     Date == "5/8/2021" ~ "T4",
     Date == "6/20/2021" ~ "T5"))
+b.metadata=b.metadata %>%
+  select(-SoilHealthCalculation, -WDRFBuffer, -OrganicNReserve, -OrganicPReserve)
 b.chem.ID=b.metadata %>%
-  select(-OrganicNRelease, -OrganicPRelease, -SoilHealthCalculation, -OrganicNInorganicN, -WDRFBuffer, -OrganicNReserve, -OrganicPReserve, -AltID, -virome, -Disturbance, -Plot, -SubPlot, -Date, -Treatment, -Burn, -Depth, -Timepoint)
+  select(-AltID, -virome, -Disturbance, -Plot, -SubPlot, -Date, -Treatment, -Burn, -Depth, -Timepoint)
 ```
 
 # All plots, before (ab - all before)
@@ -2002,12 +2004,327 @@ ggplot(b.metadata, aes(x = factor(Date, level=c("4/5/2021", "4/18/2021", "4/27/2
 
 ggsave("blodgett_potassium.pdf", width = 250, height = 105, units = "mm", dpi = 500)
 ```
+# Subset of Variables
+# Nitrogen
+```{r}
+Nitrogen_Properties = b.metadata %>%
+  select("TotalN", "OrganicN", "Nitrate", "Ammonium", "InorganicNitrogen", "OrganicCN", "OrganicNInorganicN", "OrganicNRelease", "AvailableN", "SampleID","Depth","Treatment","Date","Disturbance","Plot", "Timepoint", "virome")
+Nitrogen_Properties_long <- melt(Nitrogen_Properties, id.vars=c("SampleID","Depth","Treatment","Date","Disturbance","Plot", "Timepoint", "virome"), measure.vars=colnames(Nitrogen_Properties)[1:9])
+
+ggplot(Nitrogen_Properties_long, aes(x = factor(Timepoint, level=c("T1", "T2", "T3", "T4", "T5")), y = value, fill = factor(Treatment, level=c("Burn", "Control")))) + 
+  geom_boxplot(outlier.shape=NA) + 
+  xlab("Timepoint") + 
+  theme_bw() + 
+  geom_point(size = 0.5, position=position_jitterdodge()) + 
+  theme(axis.title = element_text(size = 8)) + 
+  theme(legend.position = "bottom") + 
+  theme(legend.text = element_text(size = 8)) + 
+  theme(axis.text = element_text(size = 8)) + 
+  #theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust = 1)) + 
+  scale_fill_manual(name = "Treatment",
+                    values = c("orange", "darkgreen")) + 
+  facet_wrap(~ variable, scales = "free_y")
+```
+# Phosphorus
+```{r}
+Phosphorus_Properties = b.metadata %>%
+  select("TotalPhosphorus", "InorganicPhosphorus", "OrganicPhosphorus", "OrganicPRelease", "AvailableP", "SampleID","Depth","Treatment","Date","Disturbance","Plot", "Timepoint", "virome")
+Phosphorus_Properties_long <- melt(Phosphorus_Properties, id.vars=c("SampleID","Depth","Treatment","Date","Disturbance","Plot", "Timepoint", "virome"), measure.vars=colnames(Phosphorus_Properties)[1:5])
+
+ggplot(Phosphorus_Properties_long, aes(x = factor(Timepoint, level=c("T1", "T2", "T3", "T4", "T5")), y = value, fill = factor(Treatment, level=c("Burn", "Control")))) + 
+  geom_boxplot(outlier.shape=NA) + 
+  xlab("Timepoint") + 
+  theme_bw() + 
+  geom_point(size = 0.5, position=position_jitterdodge()) + 
+  theme(axis.title = element_text(size = 8)) + 
+  theme(legend.position = "bottom") + 
+  theme(legend.text = element_text(size = 8)) + 
+  theme(axis.text = element_text(size = 8)) + 
+  #theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust = 1)) + 
+  scale_fill_manual(name = "Treatment",
+                    values = c("orange", "darkgreen")) + 
+  facet_wrap(~ variable, scales = "free_y")
+```
+
+# Carbon
+```{r}
+Carbon_Properties = b.metadata %>%
+  select("OrganicMatter", "CO2C", "TotalOrganicC", "MAC", "OrganicCN", "SampleID","Depth","Treatment","Date","Disturbance","Plot", "Timepoint", "virome")
+Carbon_Properties_long <- melt(Carbon_Properties, id.vars=c("SampleID","Depth","Treatment","Date","Disturbance","Plot", "Timepoint", "virome"), measure.vars=colnames(Carbon_Properties)[1:5])
+
+ggplot(Carbon_Properties_long, aes(x = factor(Timepoint, level=c("T1", "T2", "T3", "T4", "T5")), y = value, fill = factor(Treatment, level=c("Burn", "Control")))) + 
+  geom_boxplot(outlier.shape=NA) + 
+  xlab("Timepoint") + 
+  theme_bw() + 
+  geom_point(size = 0.5, position=position_jitterdodge()) + 
+  theme(axis.title = element_text(size = 8)) + 
+  theme(legend.position = "bottom") + 
+  theme(legend.text = element_text(size = 8)) + 
+  theme(axis.text = element_text(size = 8)) + 
+  #theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust = 1)) + 
+  scale_fill_manual(name = "Treatment",
+                    values = c("orange", "darkgreen")) + 
+  facet_wrap(~ variable, scales = "free_y")
+```
+
+# Micronutrients
+```{r}
+MicroNutrients_Properties = b.metadata %>%
+  select("Potassium", "Calcium", "Aluminum", "Iron", "Sulfur", "Zinc", "Manganese", "Copper", "Magnesium", "Sodium", "AvailableK", "SampleID","Depth","Treatment","Date","Disturbance","Plot", "Timepoint", "virome")
+MicroNutrients_Properties_long <- melt(MicroNutrients_Properties, id.vars=c("SampleID","Depth","Treatment","Date","Disturbance","Plot", "Timepoint", "virome"), measure.vars=colnames(MicroNutrients_Properties)[1:11])
+
+ggplot(MicroNutrients_Properties_long, aes(x = factor(Timepoint, level=c("T1", "T2", "T3", "T4", "T5")), y = value, fill = factor(Treatment, level=c("Burn", "Control")))) + 
+  geom_boxplot(outlier.shape=NA) + 
+  xlab("Timepoint") + 
+  theme_bw() + 
+  geom_point(size = 0.5, position=position_jitterdodge()) + 
+  theme(axis.title = element_text(size = 8)) + 
+  theme(legend.position = "bottom") + 
+  theme(legend.text = element_text(size = 8)) + 
+  theme(axis.text = element_text(size = 8)) + 
+  #theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust = 1)) + 
+  scale_fill_manual(name = "Treatment",
+                    values = c("orange", "darkgreen")) + 
+  facet_wrap(~ variable, scales = "free_y")
+```
+# Other properties
+```{r}
+colnames(b.metadata)
+Other_Properties = b.metadata %>%
+  select("Moisture", "SoilpH", "SolubleSalt", "SampleID","Depth","Treatment","Date","Disturbance","Plot", "Timepoint", "virome")
+Other_Properties_long <- melt(Other_Properties, id.vars=c("SampleID","Depth","Treatment","Date","Disturbance","Plot", "Timepoint", "virome"), measure.vars=colnames(Other_Properties)[1:3])
+
+ggplot(Other_Properties_long, aes(x = factor(Timepoint, level=c("T1", "T2", "T3", "T4", "T5")), y = value, fill = factor(Treatment, level=c("Burn", "Control")))) + 
+  geom_boxplot(outlier.shape=NA) + 
+  xlab("Timepoint") + 
+  theme_bw() + 
+  geom_point(size = 0.5, position=position_jitterdodge()) + 
+  theme(axis.title = element_text(size = 8)) + 
+  theme(legend.position = "bottom") + 
+  theme(legend.text = element_text(size = 8)) + 
+  theme(axis.text = element_text(size = 8)) + 
+  #theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust = 1)) + 
+  scale_fill_manual(name = "Treatment",
+                    values = c("orange", "darkgreen")) + 
+  facet_wrap(~ variable, scales = "free_y")
+```
+
+
 # All Variables
 ```{r}
-install.packages('reshape2')
 library(reshape2)
 colnames(b.metadata)
-b.metadata.long <- melt(b.metadata, id.vars=c("SampleID","Depth","Treatment","Date","Disturbance","Plot"), measure.vars=colnames(b.metadata)[3:38])
+b.metadata.long <- melt(b.metadata, id.vars=c("SampleID","Depth","Treatment","Date","Disturbance","Plot", "Timepoint", "virome"), measure.vars=colnames(b.metadata)[3:34])
+```
+# subset to only 0-3 cm
+```{r}
+b.03.long <- subset(b.metadata.long, Depth =="0-3cm")
+```
+# Wilcoxon
+```{r}
+# Wilcoxon (nonparametric between two groups) of burn plots between before and after timepoints
+b.03.burn.long <- subset(b.03.long, Treatment =="Burn")
+Wilcoxon_T1_T3 <- b.03.burn.long %>%
+  group_by(variable) %>%
+  summarise(
+    wilcoxon_p_value = wilcox.test(value[Timepoint == "T1"], value[Timepoint == "T3"], paired = FALSE)$p.value
+  ) %>%
+  mutate(significant = wilcoxon_p_value < 0.05)
+Wilcoxon_T1_T3$Wilcoxon <- "T1_T3"
+
+Wilcoxon_T1_T4 <- b.03.burn.long %>%
+  group_by(variable) %>%
+  summarise(
+    wilcoxon_p_value = wilcox.test(value[Timepoint == "T1"], value[Timepoint == "T4"], paired = FALSE)$p.value
+  ) %>%
+  mutate(significant = wilcoxon_p_value < 0.05)
+Wilcoxon_T1_T4$Wilcoxon <- "T1_T4"
+
+Wilcoxon_T1_T5 <- b.03.burn.long %>%
+  group_by(variable) %>%
+  summarise(
+    wilcoxon_p_value = wilcox.test(value[Timepoint == "T1"], value[Timepoint == "T5"], paired = FALSE)$p.value
+  ) %>%
+  mutate(significant = wilcoxon_p_value < 0.05)
+Wilcoxon_T1_T5$Wilcoxon <- "T1_T5"
+
+Wilcoxon_T2_T3 <- b.03.burn.long %>%
+  group_by(variable) %>%
+  summarise(
+    wilcoxon_p_value = wilcox.test(value[Timepoint == "T2"], value[Timepoint == "T3"], paired = FALSE)$p.value
+  ) %>%
+  mutate(significant = wilcoxon_p_value < 0.05)
+Wilcoxon_T2_T3$Wilcoxon <- "T2_T3"
+
+Wilcoxon_T2_T4 <- b.03.burn.long %>%
+  group_by(variable) %>%
+  summarise(
+    wilcoxon_p_value = wilcox.test(value[Timepoint == "T2"], value[Timepoint == "T4"], paired = FALSE)$p.value
+  ) %>%
+  mutate(significant = wilcoxon_p_value < 0.05)
+Wilcoxon_T2_T4$Wilcoxon <- "T2_T4"
+
+Wilcoxon_T2_T5 <- b.03.burn.long %>%
+  group_by(variable) %>%
+  summarise(
+    wilcoxon_p_value = wilcox.test(value[Timepoint == "T2"], value[Timepoint == "T5"], paired = FALSE)$p.value
+  ) %>%
+  mutate(significant = wilcoxon_p_value < 0.05)
+Wilcoxon_T2_T5$Wilcoxon <- "T2_T5"
+
+# Wilcoxon of control vs burn plots after fire (T3)
+b.03.T3.long <- subset(b.03.long, Timepoint =="T3")
+Wilcoxon_T3 <- b.03.T3.long %>%
+  group_by(variable) %>%
+  summarise(
+    wilcoxon_p_value = wilcox.test(value[Treatment == "Burn"], value[Treatment == "Control"], paired = FALSE)$p.value
+  ) %>%
+  mutate(significant = wilcoxon_p_value < 0.05)
+Wilcoxon_T3$Wilcoxon <- "T3"
+
+# Wilcoxon of control vs burn plots after fire (T4)
+b.03.T4.long <- subset(b.03.long, Timepoint =="T4")
+Wilcoxon_T4 <- b.03.T4.long %>%
+  group_by(variable) %>%
+  summarise(
+    wilcoxon_p_value = wilcox.test(value[Treatment == "Burn"], value[Treatment == "Control"], paired = FALSE)$p.value
+  ) %>%
+  mutate(significant = wilcoxon_p_value < 0.05)
+Wilcoxon_T4$Wilcoxon <- "T4"
+
+# Wilcoxon of control vs burn plots after fire (T5)
+b.03.T5.long <- subset(b.03.long, Timepoint =="T5")
+Wilcoxon_T5 <- b.03.T5.long %>%
+  group_by(variable) %>%
+  summarise(
+    wilcoxon_p_value = wilcox.test(value[Treatment == "Burn"], value[Treatment == "Control"], paired = FALSE)$p.value
+  ) %>%
+  mutate(significant = wilcoxon_p_value < 0.05)
+Wilcoxon_T5$Wilcoxon <- "T5"
+
+Wilcoxon_all_03 <- rbind(Wilcoxon_T1_T3, Wilcoxon_T1_T4, Wilcoxon_T1_T5, Wilcoxon_T2_T3, Wilcoxon_T2_T4, Wilcoxon_T2_T5, Wilcoxon_T3, Wilcoxon_T4, Wilcoxon_T5)
+  
+wilcoxon_significant_counts_03 <- Wilcoxon_all_03 %>%
+  group_by(variable) %>%
+  summarise(significant_test_03 = sum(significant))
+```
+# Linear Mixed Effects Model
+```{r}
+library(lme4)
+library(broom.mixed)
+
+b.03.T4.long$Treatment <- as.factor(b.03.T4.long$Treatment)
+b.03.T4.long$Treatment <- relevel(b.03.T4.long$Treatment, ref = "Control")
+
+model_example <- lm(value ~ Treatment, data = subset(b.03.T4.long, variable == "Moisture"))
+
+LM_T4 <- b.03.T4.long %>%
+  group_by(variable) %>%
+  do({
+    model <- lm(value ~ Treatment, data = .)
+    tidy(model) %>%
+      filter(term == "TreatmentBurn") %>%
+      select(p.value) %>%
+      mutate(significant = p.value < 0.05)
+  })
+```
+
+# subset to only 3-6 cm
+```{r}
+b.36.long <- subset(b.metadata.long, Depth =="3-6cm")
+```
+# Wilcoxon
+```{r}
+# Wilcoxon (nonparametric between two groups) of burn plots between before and after timepoints
+b.36.burn.long <- subset(b.36.long, Treatment =="Burn")
+Wilcoxon_T1_T3 <- b.36.burn.long %>%
+  group_by(variable) %>%
+  summarise(
+    wilcoxon_p_value = wilcox.test(value[Timepoint == "T1"], value[Timepoint == "T3"], paired = FALSE)$p.value
+  ) %>%
+  mutate(significant = wilcoxon_p_value < 0.05)
+Wilcoxon_T1_T3$Wilcoxon <- "T1_T3"
+
+Wilcoxon_T1_T4 <- b.36.burn.long %>%
+  group_by(variable) %>%
+  summarise(
+    wilcoxon_p_value = wilcox.test(value[Timepoint == "T1"], value[Timepoint == "T4"], paired = FALSE)$p.value
+  ) %>%
+  mutate(significant = wilcoxon_p_value < 0.05)
+Wilcoxon_T1_T4$Wilcoxon <- "T1_T4"
+
+Wilcoxon_T1_T5 <- b.36.burn.long %>%
+  group_by(variable) %>%
+  summarise(
+    wilcoxon_p_value = wilcox.test(value[Timepoint == "T1"], value[Timepoint == "T5"], paired = FALSE)$p.value
+  ) %>%
+  mutate(significant = wilcoxon_p_value < 0.05)
+Wilcoxon_T1_T5$Wilcoxon <- "T1_T5"
+
+Wilcoxon_T2_T3 <- b.36.burn.long %>%
+  group_by(variable) %>%
+  summarise(
+    wilcoxon_p_value = wilcox.test(value[Timepoint == "T2"], value[Timepoint == "T3"], paired = FALSE)$p.value
+  ) %>%
+  mutate(significant = wilcoxon_p_value < 0.05)
+Wilcoxon_T2_T3$Wilcoxon <- "T2_T3"
+
+Wilcoxon_T2_T4 <- b.36.burn.long %>%
+  group_by(variable) %>%
+  summarise(
+    wilcoxon_p_value = wilcox.test(value[Timepoint == "T2"], value[Timepoint == "T4"], paired = FALSE)$p.value
+  ) %>%
+  mutate(significant = wilcoxon_p_value < 0.05)
+Wilcoxon_T2_T4$Wilcoxon <- "T2_T4"
+
+Wilcoxon_T2_T5 <- b.36.burn.long %>%
+  group_by(variable) %>%
+  summarise(
+    wilcoxon_p_value = wilcox.test(value[Timepoint == "T2"], value[Timepoint == "T5"], paired = FALSE)$p.value
+  ) %>%
+  mutate(significant = wilcoxon_p_value < 0.05)
+Wilcoxon_T2_T5$Wilcoxon <- "T2_T5"
+
+# Wilcoxon of control vs burn plots after fire (T3)
+b.36.T3.long <- subset(b.36.long, Timepoint =="T3")
+Wilcoxon_T3 <- b.36.T3.long %>%
+  group_by(variable) %>%
+  summarise(
+    wilcoxon_p_value = wilcox.test(value[Treatment == "Burn"], value[Treatment == "Control"], paired = FALSE)$p.value
+  ) %>%
+  mutate(significant = wilcoxon_p_value < 0.05)
+Wilcoxon_T3$Wilcoxon <- "T3"
+
+# Wilcoxon of control vs burn plots after fire (T4)
+b.36.T4.long <- subset(b.36.long, Timepoint =="T4")
+Wilcoxon_T4 <- b.36.T4.long %>%
+  group_by(variable) %>%
+  summarise(
+    wilcoxon_p_value = wilcox.test(value[Treatment == "Burn"], value[Treatment == "Control"], paired = FALSE)$p.value
+  ) %>%
+  mutate(significant = wilcoxon_p_value < 0.05)
+Wilcoxon_T4$Wilcoxon <- "T4"
+
+# Wilcoxon of control vs burn plots after fire (T5)
+b.36.T5.long <- subset(b.36.long, Timepoint =="T5")
+Wilcoxon_T5 <- b.36.T5.long %>%
+  group_by(variable) %>%
+  summarise(
+    wilcoxon_p_value = wilcox.test(value[Treatment == "Burn"], value[Treatment == "Control"], paired = FALSE)$p.value
+  ) %>%
+  mutate(significant = wilcoxon_p_value < 0.05)
+Wilcoxon_T5$Wilcoxon <- "T5"
+
+Wilcoxon_all_36 <- rbind(Wilcoxon_T1_T3, Wilcoxon_T1_T4, Wilcoxon_T1_T5, Wilcoxon_T2_T3, Wilcoxon_T2_T4, Wilcoxon_T2_T5, Wilcoxon_T3, Wilcoxon_T4, Wilcoxon_T5)
+  
+wilcoxon_significant_counts_36 <- Wilcoxon_all_36 %>%
+  group_by(variable) %>%
+  summarise(significant_test_36 = sum(significant))
+```
+# Considering all metrics at both depths
+```{r}
+wilcoxon_all <- left_join(wilcoxon_significant_counts_03, wilcoxon_significant_counts_36, by = "variable") %>%
+  mutate(significant_test = significant_test_03 + significant_test_36)
 ```
 # Control vs. Treatment
 ```{r}
