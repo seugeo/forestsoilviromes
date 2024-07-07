@@ -124,6 +124,9 @@ p.asv <- asv.filtered[, blodgett_filtered_map$Treatment=="Prescribed_Burn" | blo
 #check if samples are identical
 identical(colnames(p.asv), p_map$ID)
 
+# see how many ASVs from prescribed burn experiment by removing ASVs that are not detected at all
+p.asv <- p.asv[rowSums(p.asv !=0) >0, ]
+
 # don't need to run the below code every time, only the first time to figure out what to rarefy to
 # p.asv.rarecurve <- rarecurve(t(p.asv), step = 100)
 # x <- map_dfr(p.asv.rarecurve, bind_rows) %>% bind_cols(colnames(p.asv),.)

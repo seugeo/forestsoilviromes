@@ -3,15 +3,21 @@ title: "Ch2Blodgett_Environmental"
 output: html_document
 date: "2024-03-02"
 ---
+
 # Load Packages
 ```{r}
 library(tidyverse)
 library(dplyr)
 library(geosphere)
-library(factoextra)
-library(gglm)
 library(pheatmap)
 library(Hmisc)
+library(reshape2)
+```
+
+# I don't know if I actually use these packages...
+```{r}
+library(factoextra)
+library(gglm)
 library(gridExtra)
 library(RColorBrewer)
 library(grid)
@@ -22,9 +28,13 @@ library(lubridate)
 
 # DISTANCE DATA
 ```{r}
-blodgett_data <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/blodgett_all_metadata.RDS")
+chem_blodgett=read_delim("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/input data/blodgett_env_metadata.csv", delim = ",", col_names = TRUE)
+blodgett_gps <- chem_blodgett %>%
+  select(SampleID, AltID, virome, Disturbance, Plot, SubPlot, Date, Treatment, Burn, Depth)
 
-blodgett_gps <- blodgett_data %>%
+#blodgett_data <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/blodgett_all_metadata.RDS")
+
+blodgett_gps <- blodgett_gps %>%
   mutate(longitude = case_when(
     SubPlot == "B1A" ~ "-120.656574", 
     SubPlot == "B1B" ~ "-120.656476",
@@ -55,14 +65,51 @@ blodgett_gps <- blodgett_gps %>%
     SubPlot == "U2B" ~ "38.915418"))
 
 blodgett_gps <- blodgett_gps %>%
-  select(SubPlot, longitude, latitude)
+  mutate(Timepoint = case_when(
+    Date == "4/5/2021" ~ "T1",
+    Date == "4/18/2021" ~ "T2", 
+    Date == "4/27/2021" ~ "T3", 
+    Date == "5/8/2021" ~ "T4",
+    Date == "6/20/2021" ~ "T5"))
+
+blodgett_gps <- blodgett_gps[!(blodgett_gps$virome=="no"),]
+blodgett_gps_T1 <- blodgett_gps[(blodgett_gps$Timepoint=="T1"),]
+blodgett_gps_T1 <- blodgett_gps_T1 %>%
+  select(SampleID, longitude, latitude)
+blodgett_gps_T1 <- column_to_rownames(blodgett_gps_T1, var = "SampleID")
+blodgett_gps_T1 <- as.data.frame(blodgett_gps_T1)
+blodgett_gps_T1$longitude <- as.numeric(blodgett_gps_T1$longitude)
+blodgett_gps_T1$latitude <- as.numeric(blodgett_gps_T1$latitude)
+dist_matrix_vinellips <- distm(blodgett_gps_T1, fun = distVincentyEllipsoid)
+rownames(dist_matrix_vinellips) <- colnames(dist_matrix_vinellips) <- rownames(blodgett_gps_T1)
+
+blodgett_gps_T2 <- blodgett_gps[(blodgett_gps$Timepoint=="T2"),]
+blodgett_gps_T2 <- blodgett_gps_T2 %>%
+  select(SampleID, longitude, latitude)
+blodgett_gps_T2 <- column_to_rownames(blodgett_gps_T2, var = "SampleID")
+blodgett_gps_T2 <- as.data.frame(blodgett_gps_T2)
+blodgett_gps_T2$longitude <- as.numeric(blodgett_gps_T2$longitude)
+blodgett_gps_T2$latitude <- as.numeric(blodgett_gps_T2$latitude)
+dist_matrix_vinellips <- distm(blodgett_gps_T2, fun = distVincentyEllipsoid)
+rownames(dist_matrix_vinellips) <- colnames(dist_matrix_vinellips) <- rownames(blodgett_gps_T2)
+
+#blodgett_gps <- blodgett_gps %>%
+  #select(SubPlot, longitude, latitude)
+
+#blodgett_gps <- blodgett_gps %>%
+  #select(SubPlot, longitude, latitude)
+
+#blodgett_gps <- blodgett_gps %>%
+  #distinct(SubPlot, .keep_all = TRUE) %>%
+  #na.omit(blodgett_gps) %>%
+  #arrange(SubPlot)
+
+#blodgett_gps <- column_to_rownames(blodgett_gps, var = "SubPlot")
+
 
 blodgett_gps <- blodgett_gps %>%
-  distinct(SubPlot, .keep_all = TRUE) %>%
-  na.omit(blodgett_gps) %>%
-  arrange(SubPlot)
-
-blodgett_gps <- column_to_rownames(blodgett_gps, var = "SubPlot")
+  select(SampleID, longitude, latitude)
+blodgett_gps <- column_to_rownames(blodgett_gps, var = "SampleID")
 blodgett_gps <- as.data.frame(blodgett_gps)
 blodgett_gps$longitude <- as.numeric(blodgett_gps$longitude)
 blodgett_gps$latitude <- as.numeric(blodgett_gps$latitude)
@@ -70,6 +117,75 @@ dist_matrix_vinellips <- distm(blodgett_gps, fun = distVincentyEllipsoid)
 rownames(dist_matrix_vinellips) <- colnames(dist_matrix_vinellips) <- rownames(blodgett_gps)
 ```
 
+# DISTANCE DECAY (T1)
+```{r}
+bray_dist_matrix <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/T1.otu.dis.matrix.RDS")
+physical_dist_matrix <- dist_matrix_vinellips
+
+bray_dist_vector <- as.vector(as.dist(bray_dist_matrix))
+physical_dist_vector <- as.vector(as.dist(dist_matrix_vinellips))
+bray_sim_vector <- 1 - bray_dist_vector
+
+cor_test_result <- cor.test(physical_dist_vector, bray_sim_vector)
+model <- lm(bray_sim_vector ~ physical_dist_vector)
+model_summary <- summary(model)
+
+slope <- model_summary$coefficients[2,1]
+p_value <- coef(summary(model))[2,4]
+correlation_coefficient <- cor_test_result$estimate
+
+plot_data <- data.frame(PhysicalDistance = physical_dist_vector, BrayCurtisSimilarity = bray_sim_vector)
+
+ggplot(plot_data, aes(x = physical_dist_vector, y = bray_sim_vector)) +
+  geom_point()+
+  geom_smooth(method = "lm", col = "black") +
+  labs(
+    title = "Distance Decay of Bray-Curtis Similarity",
+    x = "Physical Distance (meters)",
+    y = "Bray-Curtis Similarity",
+  ) +
+  theme_bw() +
+  annotate("text", x = Inf, y = Inf, label = paste0("p-value = ", format(p_value, scientific = TRUE)), hjust = 2, vjust = 2.5, size = 5) + 
+  annotate("text", x = Inf, y = Inf, label = sprintf("slope = %.3e", round(slope, 3)), hjust = 2.4, vjust = 3.7, size = 5) + 
+  annotate("text", x = Inf, y = Inf, label = paste0("r = ", round(correlation_coefficient, 3)), hjust = 4.2, vjust = 4.9, size = 5)
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/ScatterPlot/distance_decay_T1virome.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
+
+# DISTANCE DECAY (T2)
+```{r}
+bray_dist_matrix <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/T2.otu.dis.matrix.RDS")
+physical_dist_matrix <- dist_matrix_vinellips
+
+bray_dist_vector <- as.vector(as.dist(bray_dist_matrix))
+physical_dist_vector <- as.vector(as.dist(dist_matrix_vinellips))
+bray_sim_vector <- 1 - bray_dist_vector
+
+cor_test_result <- cor.test(physical_dist_vector, bray_sim_vector)
+model <- lm(bray_sim_vector ~ physical_dist_vector)
+model_summary <- summary(model)
+
+slope <- model_summary$coefficients[2,1]
+p_value <- coef(summary(model))[2,4]
+correlation_coefficient <- cor_test_result$estimate
+
+plot_data <- data.frame(PhysicalDistance = physical_dist_vector, BrayCurtisSimilarity = bray_sim_vector)
+
+ggplot(plot_data, aes(x = physical_dist_vector, y = bray_sim_vector)) +
+  geom_point()+
+  geom_smooth(method = "lm", col = "black") +
+  labs(
+    title = "Distance Decay of Bray-Curtis Similarity",
+    x = "Physical Distance (meters)",
+    y = "Bray-Curtis Similarity",
+  ) +
+  theme_bw() +
+  annotate("text", x = Inf, y = Inf, label = paste0("p-value = ", format(p_value, scientific = TRUE)), hjust = 2, vjust = 2.5, size = 5) + 
+  annotate("text", x = Inf, y = Inf, label = sprintf("slope = %.3e", round(slope, 3)), hjust = 2.4, vjust = 3.7, size = 5) + 
+  annotate("text", x = Inf, y = Inf, label = paste0("r = ", round(correlation_coefficient, 3)), hjust = 4.2, vjust = 4.9, size = 5)
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/ScatterPlot/distance_decay_T2virome.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
 
 # TEMPERATURE DATA
 # U1A
@@ -845,6 +961,7 @@ identical(chemical_data$ID, microbiome_data$ID)
 # Remove ID columns
 microbiome_data <- microbiome_data %>% select(-ID)
 chemical_data <- chemical_data %>% select(-ID)
+
 
 # Compute the correlation matrix
 cor_matrix <- rcorr(as.matrix(microbiome_data), as.matrix(chemical_data))
@@ -2007,6 +2124,20 @@ ggsave("blodgett_potassium.pdf", width = 250, height = 105, units = "mm", dpi = 
 # Subset of Variables
 # Nitrogen
 ```{r}
+install.packages("lme4")
+install.packages("lmerTest")
+
+library(lme4)
+library(lmerTest)
+
+TotalNitrogen = b.metadata %>%
+  select("TotalN", "Depth","Treatment", "Plot", "Timepoint")
+TotalNitrogen$Treatment <- factor(TotalNitrogen$Treatment)
+TotalNitrogen$Treatment <- relevel(TotalNitrogen$Treatment, ref = "Control")
+
+model <- lmer(TotalN ~ Timepoint * Treatment + (1|Plot), data = TotalNitrogen)
+summary(model)
+
 Nitrogen_Properties = b.metadata %>%
   select("TotalN", "OrganicN", "Nitrate", "Ammonium", "InorganicNitrogen", "OrganicCN", "OrganicNInorganicN", "OrganicNRelease", "AvailableN", "SampleID","Depth","Treatment","Date","Disturbance","Plot", "Timepoint", "virome")
 Nitrogen_Properties_long <- melt(Nitrogen_Properties, id.vars=c("SampleID","Depth","Treatment","Date","Disturbance","Plot", "Timepoint", "virome"), measure.vars=colnames(Nitrogen_Properties)[1:9])

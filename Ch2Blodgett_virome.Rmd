@@ -7,9 +7,7 @@ date: "2024-03-03"
 ```{r}
 library(tidyverse)
 library(vegan)
-library(lubridate)
 library(dplyr)
-library(ComplexUpset)
 ```
 # Read Input Files
 ```{r}
@@ -192,6 +190,24 @@ p.map.pc1 = left_join(p.map, pc1, by="ID")
 
 # make sure IDs are identical in count and metadata tables
 identical(colnames(p.count), p.map$ID)
+
+# Prescribed Burn (2021) - T1
+T1.otu <- otu[, blodgett_data$Date=="4/5/2021"] %>%
+  rmv_sngl()
+T1.otu.rel <- relativize(T1.otu)
+colSums(T1.otu.rel)
+T1.map <- subset(blodgett_data, Date=="4/5/2021")
+T1.count <- otu.count[, blodgett_data$Date=="4/5/2021"] %>%
+  rmv_sngl()
+
+# Prescribed Burn (2021) - T2
+T2.otu <- otu[, blodgett_data$Date=="4/18/2021"] %>%
+  rmv_sngl()
+T2.otu.rel <- relativize(T2.otu)
+colSums(T2.otu.rel)
+T2.map <- subset(blodgett_data, Date=="4/18/2021")
+T2.count <- otu.count[, blodgett_data$Date=="4/18/2021"] %>%
+  rmv_sngl()
 
 # Prescribed Burn (2021) - T3
 T3.otu <- otu[, blodgett_data$Date=="4/27/2021"] %>%
@@ -467,6 +483,8 @@ d.map$Richness <- richness
 ```
 # Upset Plot of Prescribed Burn Data
 ```{r}
+library(ComplexUpset)
+
 # upset plot for disturbance
 map <- p.map
 bmap <- map %>%
@@ -592,6 +610,21 @@ d.adonis.table <- do.call(rbind, d.adonis.results)
 
 # Prescribed Burn (2021) Samples Only
 p.otu.dist <- distance(p.otu.rel)
+p.otu.dis.matrix <- as.matrix(p.otu.dist)
+saveRDS(p.otu.dis.matrix, "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/p.otu.dis.matrix.RDS")
+
+
+p.map <- p.map %>%
+  mutate(Timepoint = case_when(
+    Date == "4/5/2021" ~ "T1",
+    Date == "4/18/2021" ~ "T2", 
+    Date == "4/27/2021" ~ "T3", 
+    Date == "5/8/2021" ~ "T4"))
+p.map <- p.map %>%
+  mutate(Treatment = case_when(
+    Treatment == "Prescribed_Burn" ~ "Burn",
+    Treatment == "Prescribed_Control" ~ "Control"
+  ))
 p.otu.pcoa <- pcoa(p.otu.dist)
 p.otu.pcoa.points <- pcoa.points(p.otu.pcoa)
 p.otu.map <- pcoa.map(p.otu.pcoa.points, blodgett_data)
@@ -830,6 +863,53 @@ variables <- c("Disturbance", "Depth", "Date", "Treatment")
 bs.adonis.results <- run_adonis(variables, bs.otu.dist, bs.otu.map)
 bs.adonis.table <- do.call(rbind, bs.adonis.results)
 
+# T1
+T1.otu.dist <- distance(T1.otu.rel)
+T1.otu.dis.matrix <- as.matrix(T1.otu.dist)
+saveRDS(T1.otu.dis.matrix, "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/T1.otu.dis.matrix.RDS")
+
+# T2
+T2.otu.dist <- distance(T2.otu.rel)
+T2.otu.dis.matrix <- as.matrix(T2.otu.dist)
+saveRDS(T2.otu.dis.matrix, "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/T2.otu.dis.matrix.RDS")
+
+```
+
+# Pairwise Dissimilarity for Depth by Interaction of Treatment and Timepoint
+```{r}
+dissimilarity_results <- data.frame()
+for (subplot in unique(p.map$SubPlot)) {
+  for (timepoint in unique(p.map$Timepoint)) {
+    samples <- p.map$ID[p.map$SubPlot == subplot & p.map$Timepoint == timepoint]
+    depths <- p.map$Depth[p.map$SubPlot == subplot & p.map$Timepoint == timepoint]
+    if (length(samples) == 2 && length(unique(depths)) == 2) {
+      bc_dissim <- p.otu.dis.matrix[samples[1], samples[2]]
+      dissimilarity_results <- rbind(dissimilarity_results, data.frame(
+        SubPlot = subplot,
+        TimePoint = timepoint,
+        Treatment = p.map$Treatment[p.map$SubPlot == subplot][1],
+        BrayCurtis = bc_dissim
+      ))
+    }
+  }
+}
+
+dissimilarity_results$FireStatus <- ifelse(dissimilarity_results$TimePoint %in% c("T1", "T2"), "Before", "After")
+interaction.order <- c("Control.Before", "Control.After", "Burn.Before", "Burn.After")
+dissimilarity_results$InteractionOrder <- factor(interaction(dissimilarity_results$Treatment, dissimilarity_results$FireStatus), levels = interaction.order)
+ggplot(dissimilarity_results, aes(x = InteractionOrder, y = BrayCurtis, fill = interaction(Treatment, FireStatus))) +
+  geom_boxplot() +
+  labs(
+    x = "Treatment and Fire Status",
+    y = "Bray-Curtis Dissimilarity", 
+    title = "Pairwise Bray-Curtis Dissimilarity Between Depths") +
+  scale_fill_manual(values = c("Burn.Before" = "mediumaquamarine", "Burn.After" = "maroon", "Control.Before" = "mediumaquamarine", "Control.After" = "mediumaquamarine")) +
+  theme_minimal()
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/BC_depth.pdf", width = 250, height = 150, units = "mm", dpi = 500)
+
+anova_results <- aov(BrayCurtis ~ interaction(Treatment, FireStatus), data = dissimilarity_results)
+summary(anova_results)
 ```
 
 
@@ -923,6 +1003,7 @@ Comp.1.dist <- dist(Comp.1)
 
 mantel_test <- mantel(d.otu.dist, Comp.1.dist)
 mantel_test
+
 
 # Just disturbed Plots except B1 (2021)
 dxB1.otu.dist <- distance(dxB1.otu.rel)
