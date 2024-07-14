@@ -942,10 +942,12 @@ ggsave("b_hm.pdf", width = 500, height = 400, units = "mm", dpi = 500)
 # Correlation b/t microbiome and chemical properties
 ```{r}
 p.phylum.long <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/p.phylum.long.RDS")
+p.phylum.long=p.phylum.long%>%
+  select(-NewPhylum)
 microbiome_data <- p.phylum.long %>%
   pivot_wider(names_from = Phylum, values_from = counts, values_fill = list(counts = 0))
 microbiome_data <- as.data.frame(microbiome_data)
-
+p_map <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/p_map.RDS")
   
 chemical_data <- b.chem.ID
 chemical_data <- chemical_data %>%
@@ -983,11 +985,7 @@ p <- pheatmap(cor_values_subset,
    clustering_method = "complete",
    main = "Correlation Heatmap of Microbiome and Chemical Properties",
    color = colorRampPalette(rev(brewer.pal(n = 7, name = "RdYlBu")))(100),
-  display_numbers = FALSE)
-
-# Modify row and column labels to include "*" for significant correlations
-p$tree_row$labels <- paste0(p$tree_row$labels, ifelse(cor(row(cor_values_subset)) < 0.05, "*", ""))
-p$tree_col$labels <- paste0(p$tree_col$labels, ifelse(cor(col(cor_values_subset)) < 0.05, "*", ""))
+  display_numbers = sig_matrix)
 
 ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/HeatMap_Dendrogram/correlation_heatmap.pdf",
        plot = p$gtable, width = 10, height = 8)

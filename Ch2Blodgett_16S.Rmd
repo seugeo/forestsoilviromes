@@ -119,6 +119,7 @@ p_map <- p_map %>%
     Date == "5/8/2021" ~ "T4", 
     Date == "6/20/2021" ~ "T5")) %>%
   mutate(TimeSubPlot = paste(TimePoint, "-", SubPlot))
+saveRDS(p_map, "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/p_map.RDS")
 p.asv <- asv.filtered[, blodgett_filtered_map$Treatment=="Prescribed_Burn" | blodgett_filtered_map$Treatment=="Prescribed_Control"] 
 
 #check if samples are identical
@@ -138,7 +139,7 @@ p.asv.rare <- data.frame(p.asv.rare) %>%
   rmv_sngl()
 
 saveRDS(p.asv.rare, "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/p.asv.rare.RDS")
-saveRDS(p_map, "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/p.map.RDS")
+
 ```
 # Everything except viromes
 ```{r}
@@ -455,8 +456,6 @@ tax_p.long <- pivot_longer(tax_p, cols=1:114, names_to = "ID", values_to = "coun
 p.phylum.long <- group_by(tax_p.long, Phylum, ID) %>%
   dplyr::summarize(counts=sum(counts))
 
-saveRDS(p.phylum.long, "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/p.phylum.long.RDS")
-
 # rarefied to 18,500
 # collapse phyla into "other" category if represents less than 2%, which is 370
 p.phylum.long$Phylum <- as.character(p.phylum.long$Phylum)
@@ -466,6 +465,8 @@ p.phylum.long <- p.phylum.long %>%
   ungroup()
 
 unique(p.phylum.long$NewPhylum)
+
+saveRDS(p.phylum.long, "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/p.phylum.long.RDS")
 
 # Prep data frame for plotting
 p.phylum.map <- merge(p.phylum.long, p_map, by="ID")

@@ -139,6 +139,10 @@ tax_all <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Fi
 tax_all$Family[is.na(tax_all$Family)] <- "Unknown Family"
 tax_all$Order <- factor(tax_all$Order, levels = c(levels(tax_all$Order), "Unknown Order"))
 tax_all$Order[is.na(tax_all$Order)] <- "Unknown Order"
+tax_all$Class <- factor(tax_all$Class, levels = c(levels(tax_all$Class), "Unknown Class"))
+tax_all$Class[is.na(tax_all$Class)] <- "Unknown Class"
+tax_all$Phylum <- factor(tax_all$Phylum, levels = c(levels(tax_all$Phylum), "Unknown Phylum"))
+tax_all$Phylum[is.na(tax_all$Phylum)] <- "Unknown Phylum"
 # remove mitochondria and chloroplast
 criteria <- !(tax_all$Family == "Mitochondria" | tax_all$Order == "Chloroplast")
 tax_filtered <- tax_all[criteria, ]
@@ -146,6 +150,7 @@ tax_filtered <- tax_all[criteria, ]
 tax_filtered <- tax_filtered %>%
   mutate(Phylum = as.character(Phylum)) %>%
   mutate(Phylum = ifelse(Phylum == "Chloroflexi", "Chloroflexota", Phylum))
+unique(tax_filtered$Phylum)
 
 saveRDS(tax_filtered, "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/tax_filtered.RDS")
 
@@ -163,12 +168,12 @@ tax_no_mitochondria <- tax_all[!(tax_all$Family=="Mitochondria"),]
 asv_filtered <- asv_filtered[!(tax_no_mitochondria$Order=="Chloroplast"),]
 
 # SELECT FOR Blodgett DATASET
-#load heat mapping data
+#load 16S mapping data
 all_map=read_delim("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/input data/16S_ID.txt", delim = "\t", col_names = TRUE)
 #change SampleID to ID
 colnames(all_map)[colnames(all_map) == "SampleID"] <- "ID"
 #subset blodgett 16S data
-blodgett.asv <- asv_filtered[,all_map$Experiment=="Heat"]
+blodgett.asv <- asv_filtered[,all_map$Location=="Blodgett"]
 blodgett.asv <- subset(blodgett.asv, select = -c(FIRE061, FIRE060))
 
 # PREP ABUNDANCE DATA
@@ -245,15 +250,6 @@ blodgett_map <- blodgett_map[order(blodgett_map$ID), ]
 
 # make sure IDs are identical in abundance and metadata tables
 identical(colnames(blodgett.asv), blodgett_map$ID)
-
-# add environmental cluster data
-k_cluster_env_16S <- k_cluster_env %>%
-  mutate(ID = gsub("V", "M", ID)) %>%
-  mutate(ID = ifelse(ID == "UDM24D", "UDM24", ID))
-colnames(k_cluster_env_16S)[colnames(k_cluster_env_16S) == "ID"] <- "MapID"
-blodgett_map = left_join(blodgett_map, k_cluster_env_16S, by="MapID")
-blodgett_map <- blodgett_map %>%
-  mutate(Cluster = as.character(Cluster))
 
 saveRDS(blodgett_map, "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/blodgett_map.RDS")
 
