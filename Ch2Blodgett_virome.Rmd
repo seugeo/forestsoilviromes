@@ -2043,6 +2043,22 @@ for (col in missing_columns) {
   d.otu.rel.allsamples[[col]] <- NA
 }
 
+# without missing columns
+dstats.otu.rel.otu <- d.otu.rel %>%
+  rownames_to_column(var = "OTU")
+dstats.otu.rel.phylum <- merge(iphop.phylum, dstats.otu.rel.otu, by = "OTU", all.y = TRUE)
+dstats.otu.rel.phylum <- dstats.otu.rel.phylum %>% mutate(HostPhylum = ifelse(is.na(HostPhylum), "Unknown", HostPhylum))
+dstats.otu.rel.phylum <- dstats.otu.rel.phylum %>% select(-OTU) 
+dstats.otu.phylum.long <- pivot_longer(dstats.otu.rel.phylum, cols=2:28, names_to = "ID", values_to = "RelAbd")
+dstats.otu.phylum.stack <- dstats.otu.phylum.long %>%
+  group_by(HostPhylum, ID) %>%
+  dplyr::summarize(RelAbd=sum(RelAbd))
+dstats.otu.phylum.map <- merge(dstats.otu.phylum.stack, d.pc1.map, by="ID")
+
+ggplot(dstats.otu.phylum.map, aes(x=Comp.1, y = RelAbd, fill = HostPhylum)) +
+  geom_bar(stat = "identity")
+
+
 # name row.names of d.otu.rel
 d.otu.rel.otu <- d.otu.rel.allsamples %>%
   rownames_to_column(var = "OTU")

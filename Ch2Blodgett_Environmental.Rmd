@@ -140,7 +140,7 @@ ggplot(plot_data, aes(x = physical_dist_vector, y = bray_sim_vector)) +
   geom_point()+
   geom_smooth(method = "lm", col = "black") +
   labs(
-    title = "Distance Decay of Bray-Curtis Similarity",
+    title = "Distance Decay of Bray-Curtis Similarity, T1",
     x = "Physical Distance (meters)",
     y = "Bray-Curtis Similarity",
   ) +
@@ -175,7 +175,7 @@ ggplot(plot_data, aes(x = physical_dist_vector, y = bray_sim_vector)) +
   geom_point()+
   geom_smooth(method = "lm", col = "black") +
   labs(
-    title = "Distance Decay of Bray-Curtis Similarity",
+    title = "Distance Decay of Bray-Curtis Similarity, T2",
     x = "Physical Distance (meters)",
     y = "Bray-Curtis Similarity",
   ) +
@@ -527,7 +527,7 @@ bba.chem.ID=bba.metadata %>%
 ```{r}
 d.metadata <- subset(chem_blodgett, Disturbance=="yes")
 d.chem.ID=d.metadata %>%
-  select(-OrganicNRelease, -OrganicPRelease, -SoilHealthCalculation, -OrganicNInorganicN, -WDRFBuffer, -OrganicNReserve, -OrganicPReserve, -AltID, -virome, -Disturbance, -Plot, -SubPlot, -Date, -Treatment, -Burn, -Depth)
+  select(-SoilHealthCalculation, -WDRFBuffer, -OrganicNReserve, -OrganicPReserve, -AltID, -virome, -Disturbance, -Plot, -SubPlot, -Date, -Treatment, -Burn, -Depth)
 ```
 # Burn plots, after, no june (dnj - disturbance no june)
 ```{r}
@@ -1540,22 +1540,31 @@ ggsave("disturbance_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500
 
 # PCA plot
 d.map.pca$Date <- factor(d.map.pca$Date, levels = burn_date_order)
-ggplot(d.map.pca, aes(x=pca1, y=pca2, color=Plot, shape = Date))+
+
+ggplot(d.map.pca, aes(x=pca1, y=pca2, color=Plot, shape = virome))+
   geom_point(size = 5)+
   xlab("PCA1, 48.05% Variance Explained")+
   ylab("PCA2, 15.09% Variance Explained")+
   theme(axis.title = element_text(size = 20)) +
   theme(legend.text = element_text(size = 20)) +
   theme(legend.title = element_text(size = 20)) +
-  theme(axis.text = element_text(size = 15))
+  theme(axis.text = element_text(size = 15)) +
+  scale_color_manual(values = treatment_plot_colors, limits = treatment_plot_order)
 
-ggsave("disturbance_plot_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCA/disturbance_plot_pca.pdf", width = 200, height = 125, units = "mm", dpi = 500)
 ```
 
 ```{r}
-pca_fit <- princomp(d.nut.mtx, cor = TRUE)
+pca.d.nut.mtx <- as.data.frame(d.nut.mtx) %>%
+  select(Moisture, SoilpH, OrganicMatter, InorganicNitrogen, OrganicNInorganicN, InorganicPhosphorus, OrganicPhosphorus, Calcium, Magnesium, Potassium)
+
+pca_fit <- princomp(pca.d.nut.mtx, cor = TRUE)
 scores <- as.data.frame(pca_fit$scores)
+scores$Comp.1 <- -scores$Comp.1
+
+
 loadings <- as.data.frame(pca_fit$loadings[, 1:2])
+loadings$Comp.1 <- -loadings$Comp.1
 
 pca_plot <- ggplot(scores, aes(x = Comp.1, y = Comp.2)) +
   geom_point(size = 2) +  # Plot individual samples
@@ -1581,8 +1590,52 @@ pc1_loadings <- as.data.frame(pca_fit$loadings[, 1])
 colnames(pc1_loadings) <- c("Loadings")
 pc1_loadings$Variables <- rownames(pc1_loadings)
 
+chem_order <- c("Zinc", "Sulfur", "Sodium", "AvailableK", "Potassium", "Manganese", "Magnesium", "Iron", "Copper", "Calcium", "Aluminum", "OrganicPRelease", "AvailableP", "OrganicPhosphorus", "InorganicPhosphorus", "TotalPhosphorus", "OrganicNRelease", "AvailableN","OrganicNInorganicN", "Nitrate", "Ammonium", "InorganicNitrogen", "OrganicN", "TotalN",  "OrganicCN", "CO2C", "MAC", "TotalOrganicC", "OrganicMatter", "SolubleSalt", "SoilpH", "Moisture")
+
+chem_order <- c("Potassium", "Magnesium", "Calcium", "OrganicPhosphorus", "InorganicPhosphorus", "OrganicNInorganicN", "InorganicNitrogen", "OrganicMatter", "SoilpH", "Moisture")
+
+pc1_loadings$Variables <- factor(pc1_loadings$Variables, levels = chem_order)
+pc1_loadings$Loadings <- -pc1_loadings$Loadings
+pc1_loadings <- pc1_loadings %>%
+  mutate(Variable_Group = case_when(
+    Variables == "Moisture" ~ "Moisture",
+    Variables == "SoilpH" ~ "SoilpH",
+    #Variables == "SolubleSalt" ~ "SolubleSalt",
+    Variables == "OrganicMatter" ~ "OrganicMatter",
+    #Variables == "CO2C" ~ "Carbon",
+    #Variables == "TotalOrganicC" ~ "Carbon",
+    #Variables == "MAC" ~ "Carbon",
+    #Variables == "OrganicCN" ~ "Carbon/Nitrogen",
+    #Variables == "TotalN" ~ "Nitrogen",
+    #Variables == "OrganicN" ~ "Nitrogen",
+    #Variables == "Nitrate" ~ "Nitrogen",
+    #Variables == "Ammonium" ~ "Nitrogen",
+    Variables == "InorganicNitrogen" ~ "Nitrogen",
+    Variables == "OrganicNInorganicN" ~ "Nitrogen",
+    #Variables == "OrganicNRelease" ~ "Nitrogen",
+    #Variables == "AvailableN" ~ "Nitrogen",
+    #Variables == "TotalPhosphorus" ~ "Phosphorus",
+    Variables == "InorganicPhosphorus" ~ "Phosphorus",
+    Variables == "OrganicPhosphorus" ~ "Phosphorus",
+    #Variables == "OrganicPRelease" ~ "Phosphorus",
+    #Variables == "AvailableP" ~ "Phosphorus",
+    Variables == "Calcium" ~ "Micronutrients", 
+    #Variables == "Aluminum" ~ "Micronutrients",
+    #Variables == "Iron" ~ "Micronutrients",
+    #Variables == "Sulfur" ~ "Micronutrients",
+    #Variables == "Zinc" ~ "Micronutrients",
+    #Variables == "Manganese" ~ "Micronutrients",
+    #Variables == "Copper" ~ "Micronutrients",
+    Variables == "Magnesium" ~ "Micronutrients",
+    #Variables == "Sodium" ~ "Micronutrients",
+    Variables == "Potassium" ~ "Micronutrients"))
+    #Variables == "AvailableK" ~ "Micronutrients"))
+
+Variable_Group_Colors <- c("Moisture" = "blue", "SoilpH" = "purple", "OrganicMatter" = "brown", "Nitrogen" = "gold", "Phosphorus" = "limegreen", "Micronutrients" = "orange")
+
+
 # Plot the loadings for PC1
-ggplot(pc1_loadings, aes(x = Variables, y = Loadings, fill = Variables)) +
+ggplot(pc1_loadings, aes(x = Variables, y = Loadings, fill = Variable_Group)) +
   geom_bar(stat = "identity") +
   coord_flip() +
   theme_minimal() +
@@ -1590,13 +1643,30 @@ ggplot(pc1_loadings, aes(x = Variables, y = Loadings, fill = Variables)) +
   theme(legend.position = "none") +
   labs(title = "Loadings of Variables on PC1",
        x = "Variables",
-       y = "Loadings")
+       y = "Loadings") +
+  scale_fill_manual(values = Variable_Group_Colors)
 
 ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCA/PC1_loadings.pdf", width = 200, height = 125, units = "mm", dpi = 500)
 
 pc1 <- as.data.frame(pc1)
-pc1 <- rownames_to_column(pc1, var = "ID")
+pc1 <- rownames_to_column(pc1, var = "SampleID")
 
+pc1_virome <- merge(pc1, chem_blodgett[, c("SampleID", "virome")], by = "SampleID", all.x = TRUE)
+pc1_virome <- pc1_virome %>%
+  mutate(missing = case_when(
+    virome == "yes" ~ "0", 
+    virome == "no" ~ "1"
+  ))
+pc1_virome$missing <- as.numeric(pc1_virome$missing)
+
+glm_missing <- glm(missing ~ Comp.1, data = pc1_virome, family = binomial)
+summary(glm_missing)
+pc1_virome$fitted_y <- predict(glm_missing, type = "response")
+
+ggplot(pc1_virome, aes(x = Comp.1, y = missing)) +
+  geom_point() +
+  geom_line(aes(y = fitted_y), color = "blue") +
+  theme_bw()
 
 ```
 
@@ -2472,7 +2542,7 @@ ggplot(b.metadata.long, aes(x = factor(Date, level=c("4/5/2021", "4/18/2021", "4
   scale_fill_manual(name = "Treatment",
                     values = c("orange", "darkgreen")) + 
   facet_wrap(~ variable, scales = "free_y")
-ggsave("blodgett_env_boxplots.pdf", width = 400, height = 400, units = "mm", dpi = 500)
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/TotalEnvironmental/blodgett_env_boxplots.pdf", width = 400, height = 400, units = "mm", dpi = 500)
 ```
 # Facet 0-3cm and 3-6cm
 ```{r}
