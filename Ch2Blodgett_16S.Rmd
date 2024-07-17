@@ -10,7 +10,6 @@ library(tidyverse)
 library(vegan)
 library(dplyr)
 library(ggplot2)
-library(DESeq2)
 library(factoextra)
 library(gridExtra)
 library(cowplot)
@@ -92,6 +91,7 @@ blodgett_phylum <- ggplot(blodgett.phylum.map, aes(x=factor(Treatment, level = t
   scale_fill_manual(values=collapsed_phylum_colors) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  labs(fill = "Phylum")+
   facet_wrap(~SampleType)
 
 blodgett_phylum
@@ -240,11 +240,16 @@ b.asv.rare <- data.frame(b.asv.rare) %>%
 bd.asv <- p.asv[,p_map$Disturbance=="Yes_Burn"] %>%
   rmv_sngl()
 bd_map <- subset(p_map, Disturbance=="Yes_Burn")
+d_pc1 <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/d_pc1.RDS")
+pc1_asv <- d_pc1 %>%
+  mutate(ID = gsub("V", "M", ID)) %>%
+  mutate(ID = ifelse(ID == "UDM24D", "UDM24", ID))
+colnames(pc1_asv)[colnames(pc1_asv) == "ID"] <- "MapID"
 bd_map.pc1 = left_join(bd_map, pc1_asv, by="MapID")
 bd_pc1.map = left_join(pc1_asv, bd_map, by="MapID")
 
 #check if samples are identical
-identical(colnames(bd.asv), bd_map$ID)
+identical(colnames(bd.asv), bd_map.pc1$ID)
 
 #bd.asv.rarecurve <- rarecurve(t(bd.asv), step = 100)
 #x <- map_dfr(bd.asv.rarecurve, bind_rows) %>% bind_cols(colnames(bd.asv),.)
@@ -386,17 +391,17 @@ pcoa.plot.p.disturbance(b.asv.map, x_col = pcoa1, y_col = pcoa2, color_col= Dist
 bd.asv.dist=vegdist(t(bd.asv.rare), method = "bray")
 bd.asv.pcoa <- pcoa(bd.asv.dist)
 bd.asv.pcoa.points <- pcoa.points(bd.asv.pcoa)
-bd.asv.map <- pcoa.map(bd.asv.pcoa.points, bd_map)
+bd.asv.map <- pcoa.map(bd.asv.pcoa.points, bd_map.pc1)
 variance(bd.asv.pcoa, 1)
 variance(bd.asv.pcoa, 2)
 
-pcoa.plot.plot(bd.asv.map, x_col = pcoa1, y_col = pcoa2, color_col= Plot, shape_col = Date, x_label = "28.25% Variance Explained", y_label = "16.61% Variance Explained", title = "Burn Plots, Disturbed Samples, 2021 Blodgett 16S rRNA ASV Profile", filename = "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCoA/prokaryotes/BurnDisturbed_2021_blodgett_ASV_pcoa.pdf")
+pcoa.plot.plot(bd.asv.map, x_col = pcoa1, y_col = pcoa2, color_col= Plot, shape_col = Date, x_label = "28.25% Variance Explained", y_label = "16.64% Variance Explained", title = "Burn Plots, Disturbed Samples, 2021 Blodgett 16S rRNA ASV Profile", filename = "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCoA/prokaryotes/BurnDisturbed_2021_blodgett_ASV_pcoa.pdf")
 
 ggplot(bd.asv.map, aes(x=pcoa1, y=pcoa2, color=Plot))+
   geom_point(size = 3) +
   #scale_color_gradient(low = "yellow", high = "red") +
   labs(x = "28.25% Variance Explained", 
-       y = "16.61% Variance Explained",
+       y = "16.64% Variance Explained",
        title = "Burn Plots, Disturbed")+
   theme(axis.title = element_text(size = 16)) +
   theme(legend.text = element_text(size = 16), legend.position = "right") +
@@ -408,18 +413,13 @@ ggplot(bd.asv.map, aes(x=pcoa1, y=pcoa2, color=Plot))+
 
 ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCoA/prokaryotes/Burn_Disturbed_PCOA.pdf", width = 200, height = 125, units = "mm", dpi = 500)
 
-pc1_asv <- pc1 %>%
-  mutate(ID = gsub("V", "M", ID)) %>%
-  mutate(ID = ifelse(ID == "UDM24D", "UDM24", ID))
-colnames(pc1_asv)[colnames(pc1_asv) == "ID"] <- "MapID"
 
-bd.asv.map.pc1 <- pcoa.map(bd.asv.pcoa.points, bd_map.pc1)
 
-ggplot(bd.asv.map.pc1, aes(x=pcoa1, y=pcoa2, color=Comp.1))+
+ggplot(bd.asv.map, aes(x=pcoa1, y=pcoa2, color=Comp.1))+
   geom_point(size = 3) +
   scale_color_gradient(low = "yellow", high = "red") +
-  labs(x = "28.25% Variance Explained", 
-       y = "16.61% Variance Explained",
+  labs(x = "PCo1 (28.25% variance explained)", 
+       y = "PCo2 (16.61% variance explained)",
        title = "Burn Plots, Disturbed Samples - ASV with PC1 gradient")+
   theme(axis.title = element_text(size = 16)) +
   theme(legend.text = element_text(size = 16), legend.position = "right") +
@@ -431,7 +431,7 @@ ggplot(bd.asv.map.pc1, aes(x=pcoa1, y=pcoa2, color=Comp.1))+
 
 ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCoA/prokaryotes/Burn_Disturbed_PC1_PCOA.pdf", width = 200, height = 125, units = "mm", dpi = 500)
 
-Comp.1 <- bd_map.pc1$Comp.1
+Comp.1 <- bd.asv.map$Comp.1
 Comp.1.dist <- dist(Comp.1)
 
 mantel_test <- mantel(bd.asv.dist, Comp.1.dist)
@@ -532,31 +532,20 @@ unique(t.phylum.long$NewPhylum)
 
 # Prep data frame for plotting
 t.phylum.map <- merge(t.phylum.long, t_map, by="ID")
-t.phylum.map <- t.phylum.map %>% 
-  mutate(treatment = case_when(
-    Date == "Prescribed_Control" ~ "T1",
-    Date == "4/18/2021" ~ "T2", 
-    Date == "4/27/2021" ~ "T3", 
-    Date == "5/8/2021" ~ "T4")) %>%
-  mutate(depth = case_when(
-    Depth == "0-3cm" ~ " 0-3",
-    Depth == "3-6cm" ~ " 3-6")) %>%
-  arrange(Order) %>%
-  mutate(SubPlotdepth = paste(SubPlot, depth)) %>%
-  arrange(SubPlotdepth)
 treatment_order <- c('Prescribed_Control','Heat_Field','Heat_Control', '30ºC', '60ºC', '90ºC', 'Prescribed_Burn')
 
 # Plot
 total_phylum <- ggplot(t.phylum.map, aes(x=factor(Treatment, level = treatment_order), y=counts, fill=NewPhylum))+
     labs(x="Treatment", 
-       y ="Counts",
+       y ="Relative Abundance",
        title = "Blodgett 16S rRNA ASV Profile")+
   geom_bar(stat="identity", position = "fill")+
   scale_fill_manual(values=collapsed_phylum_colors) +
   theme_bw() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  labs(fill = "Phylum") #+
+  #theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-total_phylum <- ggsave("total_phylum.pdf", width = 200, height = 100, units = "mm", dpi = 500)
+total_phylum <- ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/StackedBar/ASVPhylum/total_phylum.pdf", width = 200, height = 100, units = "mm", dpi = 500)
 
 ```
 
@@ -822,13 +811,14 @@ unique(tax_bd$Phylum)
 tax_bd.long <- pivot_longer(tax_bd, cols=1:48, names_to = "MapID", values_to = "counts")
 bd.phylum.long <- group_by(tax_bd.long, Phylum, MapID) %>%
   dplyr::summarize(counts=sum(counts))
+unique(bd.phylum.long$Phylum)
 
 # rarefied to 20100
 # collapse phyla into "other" category if represents less than 2%, which is 402
 bd.phylum.long$Phylum <- as.character(bd.phylum.long$Phylum)
 bd.phylum.long <- bd.phylum.long %>%
   group_by(Phylum) %>%
-  mutate(NewPhylum = ifelse(all(counts < 402), 'Other', Phylum)) %>%
+  mutate(NewPhylum = ifelse(all(na.omit(counts) < 402), 'Other', Phylum)) %>%
   ungroup()
 
 unique(bd.phylum.long$NewPhylum)
@@ -841,10 +831,12 @@ bd.phylum.map <- bd.phylum.map %>%
   arrange(Comp.1) %>%
   mutate(rank = dense_rank(Comp.1))
 
+unique(bd.phylum.map$NewPhylum)
+
 # Plot (I believe this would be every single sample)
-bd_phylum <- ggplot(bd.phylum.map, aes(x=rank, y=counts, fill=factor(NewPhylum, level=collapsed_phyla_order)))+
-    labs(x="Sample", 
-       y ="Counts",
+bd_phylum <- ggplot(bd.phylum.map, aes(x=rank, y=counts, fill=NewPhylum))+
+    labs(x="Burn Severity Ranking", 
+       y ="Relative Abundance",
        title = "Burn Plots, Disturbed Samples, PC1, 16S rRNA ASV Profile")+
   geom_bar(stat="identity", position = "fill", width = 0.75)+
   #geom_vline(xintercept = c(8.5, 16.5, 24.5, 32.5), linetype = "solid", color = "black", size = 0.75)+
@@ -856,9 +848,10 @@ bd_phylum <- ggplot(bd.phylum.map, aes(x=rank, y=counts, fill=factor(NewPhylum, 
     panel.grid.minor = element_blank(),  # Remove minor grid lines
     panel.background = element_blank()
   ) +
+  labs(fill = "Phylum") +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5),
         legend.position = "bottom")
 
 bd_phylum
-bd_phylum <- ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/StackedBar/ASVPhylum/bd_phylum_PC1.pdf", width = 350, height = 100, units = "mm", dpi = 500)
+bd_phylum <- ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/StackedBar/ASVPhylum/bd_phylum_PC1.pdf", width = 190, height = 100, units = "mm", dpi = 500)
 ```

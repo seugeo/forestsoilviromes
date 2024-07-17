@@ -9,11 +9,13 @@ date: "2024-03-05"
   disturbance_colors <- c("mediumaquamarine", "gold", "darkorange", "red", "maroon")
   disturbance_order <- c('No', 'Yes_30ºC', 'Yes_60ºC', 'Yes_90ºC', 'Yes_Burn')
   p_disturbance_colors <- c("mediumaquamarine", "maroon")
-  p_disturbance_order <- c('No', 'Yes_Burn')
+  p_disturbance_order <- c('no', 'yes')
   plot_colors <- c("turquoise3","turquoise4", "chocolate2", "burlywood", "darkorange4", "tomato3")
   plot_order <- c('U1', 'U2', 'B1', 'B2', 'B3', 'B4')
   treatment_plot_colors <- c("chocolate2", "burlywood", "darkorange4", "tomato3")
   treatment_plot_order <- c('B1', 'B2', 'B3', 'B4')
+  subset_plot_colors <- c("turquoise4", "burlywood", "darkorange4", "tomato3")
+  subset_plot_order <- c('U2', 'B2', 'B3', 'B4')
   treatment_colors <- c("#ff7002", "#92d050")
   probe_colors <- c("#ffba00","#df4200","#aa0048","#800080")
   probe_order <- c('Depth1', 'Depth2', 'Depth4', 'Depth6')
@@ -196,18 +198,18 @@ pcoa.plot.plot.disturbance <- function(data.map, x_col, y_col, color_col, shape_
   if(!is.null(filename)) {
     ggsave(filename, plot = p, device = "pdf", width = 220, height = 150, units = "mm", dpi = 500)}
 return(p)}
-# PCOA PLOT w/ color=Cluster and shape=Disturbance
-pcoa.disturbance.cluster <- function(data.map, x_col, y_col, color_col, shape_col, x_label = NULL, y_label = NULL, title = "Title", filename = NULL) {
+# PCOA PLOT w/ color=Subset of plot and shape=Disturbance 
+pcoa.sub.plot.disturbance <- function(data.map, x_col, y_col, color_col, shape_col, x_label = NULL, y_label = NULL, title = "Title", filename = NULL) {
   p <- ggplot(data.map, aes(x={{x_col}}, y={{y_col}}, color={{color_col}}, shape={{shape_col}}))+
   geom_point(size = 3) +
-  #scale_color_manual(values=plot_colors, limits=plot_order) +
+  scale_color_manual(values=subset_plot_colors, limits=subset_plot_order) +
   #scale_shape_manual(values=p_disturbance_colors, limits=p_disturbance_order) +
   labs(x = ifelse(!is.null(x_label), x_label, as_label(enquo(x_col))), 
        y = ifelse(!is.null(y_label), y_label, as_label(enquo(y_col))),
        title = title)+
-  theme(axis.title = element_text(size = 25)) +
+  theme(axis.title = element_text(size = 20)) +
   theme(legend.text = element_text(size = 20), legend.position = "right") +
-  theme(legend.title = element_text(size = 25)) +
+  theme(legend.title = element_text(size = 20)) +
   theme(axis.text = element_text(size = 20)) +
   theme(panel.background=element_rect(fill="white"), 
       panel.grid.major = element_line(color = "lightgrey"), 
