@@ -95,14 +95,19 @@ kruskal.test(DNA_g ~ Disturbance, na_yields_03_burn)
 na_yields_03_control <- na_yields.stats %>%
   filter(Depth == "0-3cm"&Treatment == "Prescribed_Control")
 kruskal.test(DNA_g ~ Burn, na_yields_03_control)
-
 na_yields_36_burn <- na_yields.stats %>%
   filter(Depth == "3-6cm"&Treatment == "Prescribed_Burn")
 kruskal.test(DNA_g ~ Burn, na_yields_36_burn)
-
 na_yields_36_control <- na_yields.stats %>%
   filter(Depth == "3-6cm"&Treatment == "Prescribed_Control")
 kruskal.test(DNA_g ~ Burn, na_yields_36_control)
+
+na_yields_burn <- na_yields.stats %>%
+  filter(Treatment == "Prescribed_Burn")
+kruskal.test(DNA_g ~ Date, na_yields_burn)
+na_yields_control <- na_yields.stats %>%
+  filter(Treatment == "Prescribed_Control")
+kruskal.test(DNA_g ~ Date, na_yields_control)
 
 ```
 # DNA Yields with NA replaced with 0.49 ng/g soil
@@ -2111,6 +2116,33 @@ hostphylum <- ggplot(d.otu.phylum.map, aes(x=rank, y=RelAbd, fill=NewHostPhylum)
   scale_y_continuous(limits = c(0, 0.5), expand = c(0,0)) +
   labs(fill = "Host Phylum")
 hostphylum <- ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/StackedBar/HostPhylum/burn_disturbed_PC1_phylum.pdf", width = 250, height = 150, units = "mm", dpi = 500)
+
+
+
+#Stats
+d.host.stats <- d.otu.phylum.map
+firm_d <- d.host.stats %>%
+  filter(HostPhylum == "Firmicutes")
+ggplot(firm_d, aes(x = Comp.1, y = RelAbd)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Relative Abundance of Firmicutes") +
+  theme_minimal()
+
+cor.test(firm_d$Comp.1, firm_d$RelAbd, method = "spearman")
+
+actino_d <- d.host.stats %>%
+  filter(HostPhylum == "Actinobacteriota")
+ggplot(actino_d, aes(x = Comp.1, y = RelAbd)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Relative Abundance of Actinobacteriota") +
+  theme_minimal()
+
+cor.test(actino_d$Comp.1, firm_d$RelAbd, method = "spearman")
+
 ```
 
 # Host Prediction Stats

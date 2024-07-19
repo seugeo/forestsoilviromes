@@ -2029,22 +2029,23 @@ ggsave("b_k_disturbance_pca.pdf", width = 200, height = 125, units = "mm", dpi =
 # INDIVIDUAL VARIABLES - BOX PLOTS
 # Soil Moisture
 ```{r}
-ggplot(b.metadata, aes(x = factor(Date, level=c("4/5/2021", "4/18/2021", "4/27/2021", "5/8/2021", "6/20/2021")), y = Moisture, fill = factor(Depth, level=c("0-3cm", "3-6cm")), )) +
+ggplot(b.metadata, aes(x = Timepoint, y = Moisture, fill = Treatment)) +
   annotate('rect', xmin = -Inf, xmax = 2.5, ymin = -Inf, ymax = Inf, fill = 'lightgreen', alpha = 0.5) +
   geom_boxplot(outlier.shape=NA) +
-  xlab("Date") +
+  xlab("Timepoint") +
   ylab("Gravimetric Soil Moisture (%)") +
   theme_bw() +
-  geom_point(position=position_jitterdodge()) +
+  geom_jitter(aes(color = Depth), position = position_jitter(), size = 1.5) +
   theme(axis.title = element_text(size = 12)) +
   theme(legend.position = "none") +
   theme(legend.text = element_text(size = 15)) +
   theme(axis.text = element_text(size = 12)) +
   theme(axis.text.x = element_text(size = 12)) +
-  scale_fill_manual(name = "Depth", 
-                    values = c("brown", "darkorange")) +
+  scale_fill_manual(name = "Treatment", 
+                    values = treatment_colors) +
+  scale_color_manual(values = depth_colors) +
   facet_wrap(~ Treatment)
-ggsave("blodgett_moisture.pdf", width = 250, height = 105, units = "mm", dpi = 500)
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/SingleEnvironmental/blodgett_moisture.pdf", width = 150, height = 100, units = "mm", dpi = 500)
 
 # STATS!!!
 yields.stats <- dnayields

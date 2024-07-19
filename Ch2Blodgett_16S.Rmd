@@ -487,22 +487,6 @@ p_phylum <- ggplot(p.phylum.map, aes(x=TimeSubPlot, y=counts, fill=factor(NewPhy
         legend.position = "none")
 p_phylum
 p_phylum <- ggsave("p_phylum.pdf", width = 350, height = 100, units = "mm", dpi = 500)
-
-# cluster plot
-p.phylum.map <- p.phylum.map %>% 
-  mutate(ClusterTime = paste(TimePoint, "-", SubPlot, "-", Cluster))
-
-pk_phylum <- ggplot(p.phylum.map, aes(x=ClusterTime, y=counts, fill=factor(NewPhylum, level=collapsed_phyla_order)))+
-    labs(x="Sample", 
-       y ="Counts",
-       title = "Prescribed Burn 16S rRNA ASV Profile")+
-  geom_bar(stat="identity", position = "fill", width = 0.75)+
-  geom_vline(xintercept = c(12.5, 24.5, 36.5, 48.5), linetype = "solid", color = "black", size = 0.75)+
-  scale_fill_manual(values=collapsed_phylum_colors) +
-  theme_bw() +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5),
-        legend.position = "none")
-pk_phylum <- ggsave("pk_phylum.pdf", width = 350, height = 100, units = "mm", dpi = 500)
 ```
 # Total DNA only
 ```{r}
@@ -854,4 +838,42 @@ bd_phylum <- ggplot(bd.phylum.map, aes(x=rank, y=counts, fill=NewPhylum))+
 
 bd_phylum
 bd_phylum <- ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/StackedBar/ASVPhylum/bd_phylum_PC1.pdf", width = 190, height = 100, units = "mm", dpi = 500)
+
+
+# I think I need to change everything to proportion instead of counts...
+
+bd.stats <- bd.phylum.map
+firm_bd <- bd.stats %>%
+  filter(Phylum == "Firmicutes")
+ggplot(firm_bd, aes(x = Comp.1, y = counts)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Counts of Firmicutes") +
+  theme_minimal()
+
+cor.test(firm_bd$Comp.1, firm_bd$counts, method = "spearman")
+
+actino_bd <- bd.stats %>%
+  filter(Phylum == "Actinobacteriota")
+ggplot(actino_bd, aes(x = Comp.1, y = counts)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Counts of Actinobacteriota") +
+  theme_minimal()
+
+cor.test(actino_bd$Comp.1, actino_bd$counts, method = "spearman")
+
+bact_bd <- bd.stats %>%
+  filter(Phylum == "Bacteroidota")
+ggplot(bact_bd, aes(x = Comp.1, y = counts)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Counts of Bacteroidota") +
+  theme_minimal()
+
+cor.test(bact_bd$Comp.1, bact_bd$counts, method = "spearman")
+
 ```
