@@ -76,7 +76,7 @@ na_DNAyield <- na_dnayields %>%
   ylab("DNA yield (ng/g soil)") +
   theme_bw() +
   theme(axis.title = element_text(size = 16)) +
-  theme(legend.position = "bottom", legend.text = element_text(size=16), legend.title = element_text(size=16)) +
+  theme(legend.position = "none", legend.text = element_text(size=16), legend.title = element_text(size=16)) +
   theme(axis.text = element_text(size = 16)) +
   scale_fill_manual(name = "Treatment", 
                     values = treatment_colors) +
@@ -84,7 +84,7 @@ na_DNAyield <- na_dnayields %>%
   facet_wrap(~ Treatment)
 
 na_DNAyield + theme(strip.text = element_text(size=16))
-ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/DNAyield/Blodgett_0_DNAyield.pdf", width = 200, height = 120, units = "mm", dpi = 500)
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/DNAyield/Blodgett_0_DNAyield.pdf", width = 150, height = 100, units = "mm", dpi = 500)
 
 # stats on DNA yield 
 # this is where the NA values are replaced with a 0
@@ -248,6 +248,17 @@ colSums(T3.otu.rel)
 T3.map <- subset(blodgett_data, Date=="4/27/2021")
 T3.count <- otu.count[, blodgett_data$Date=="4/27/2021"] %>%
   rmv_sngl()
+
+# Prescribed Burn (2021) - T3 + burn samples only
+T3d.otu <- otu[, blodgett_data$Date=="4/27/2021" & blodgett_data$Disturbance=="Yes_Burn"] %>%
+  rmv_sngl()
+T3d.otu.rel <- relativize(T3d.otu)
+colSums(T3d.otu.rel)
+T3d.map <- subset(blodgett_data, Date=="4/27/2021" & blodgett_data$Disturbance=="Yes_Burn")
+T3d.count <- otu.count[, blodgett_data$Date=="4/27/2021" & blodgett_data$Disturbance=="Yes_Burn"] %>%
+  rmv_sngl()
+
+
 # Prescribed Burn (2021) - T4
 T4.otu <- otu[, blodgett_data$Date=="5/8/2021"] %>%
   rmv_sngl()
@@ -256,6 +267,17 @@ colSums(T4.otu.rel)
 T4.map <- subset(blodgett_data, Date=="5/8/2021")
 T4.count <- otu.count[, blodgett_data$Date=="5/8/2021"] %>%
   rmv_sngl()
+
+# Prescribed Burn (2021) - T4 + burn samples only
+T4d.otu <- otu[, blodgett_data$Date=="5/8/2021" & blodgett_data$Disturbance=="Yes_Burn"] %>%
+  rmv_sngl()
+T4d.otu.rel <- relativize(T4d.otu)
+colSums(T4d.otu.rel)
+T4d.map <- subset(blodgett_data, Date=="5/8/2021" & blodgett_data$Disturbance=="Yes_Burn")
+T4d.count <- otu.count[, blodgett_data$Date=="5/8/2021" & blodgett_data$Disturbance=="Yes_Burn"] %>%
+  rmv_sngl()
+
+
 # 2021, after burn (all plots)
 ab.otu <- otu[, blodgett_data$Burn=="After"] %>%
   rmv_sngl()
@@ -588,8 +610,9 @@ variance(p.otu.pcoa, 1)
 variance(p.otu.pcoa, 2)
 pcoa.plot.disturbance(p.otu.map, x_col = pcoa1, y_col = pcoa2, color_col= Disturbance, shape_col = Date, x_label = "5.34% Variance Explained", y_label = "4.32% Variance Explained", title = "2021 Blodgett Viromes", filename = "2021_blodgett_disturbance.pdf")
 pcoa.plot.plot(p.otu.map, x_col = pcoa1, y_col = pcoa2, color_col= Plot, shape_col = Date, x_label = "5.33% Variance Explained", y_label = "4.32% Variance Explained", title = "2021 Blodgett Viromes", filename = "2021_blodgett_plot.pdf")
+
 pcoa.plot.plot.disturbance(p.otu.map, x_col = pcoa1, y_col = pcoa2, color_col= Plot, shape_col = Disturbance, x_label = "PCo1 (5.34% variance explained)", y_label = "PCo2 (4.32% variance explained)", title = "2021 Blodgett Viromes", filename = "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCoA/viromes/2021_blodgett_plot_disturbance.pdf")
-pcoa.disturbance.cluster(p.otu.map, x_col = pcoa1, y_col = pcoa2, color_col= Cluster, shape_col = Disturbance, x_label = "5.33% Variance Explained", y_label = "4.32% Variance Explained", title = "2021 Blodgett Viromes", filename = "2021_blodgett_cluster_disturbance.pdf")
+
 
 # run PERMANOVAs
 variables <- c("Disturbance", "Depth", "Date", "Treatment", "Plot")
@@ -604,7 +627,6 @@ pxB1xU1.otu.map <- pcoa.map(pxB1xU1.otu.pcoa.points, p.map)
 variance(pxB1xU1.otu.pcoa, 1)
 variance(pxB1xU1.otu.pcoa, 2)
 pcoa.sub.plot.disturbance(pxB1xU1.otu.map, x_col = pcoa1, y_col = pcoa2, color_col= Plot, shape_col = Disturbance, x_label = "PCo1 (5.90% variance explained)", y_label = "PCo2 (5.56% variance explained)", title = "2021 Blodgett Viromes xB1xU1", filename = "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCoA/viromes/2021_blodgett_plot_disturbance_xB1_xU1.pdf")
-pcoa.disturbance.cluster(pxB1xU1.otu.map, x_col = pcoa1, y_col = pcoa2, color_col= Cluster, shape_col = Disturbance, x_label = "5.90% Variance Explained", y_label = "5.56% Variance Explained", title = "2021 Blodgett Viromes xB1xU1", filename = "2021_blodgett_cluster_disturbance_xB1_xU1.pdf")
 # run PERMANOVAs
 variables <- c("Disturbance", "Depth", "Date", "Treatment", "Plot")
 pxB1xU1.adonis.results <- run_adonis(variables, pxB1xU1.otu.dist, pxB1xU1.otu.map)
@@ -627,10 +649,10 @@ ggplot(d.otu.map.pc1, aes(x=pcoa1, y=pcoa2, color=Comp.1, shape = Plot))+
   labs(x = "PCo1 (12.87% variance explained)", 
        y = "PCo2 (10.3% variance explained)",
        title = "All Disturbed Samples")+
-  theme(axis.title = element_text(size = 16)) +
-  theme(legend.text = element_text(size = 16), legend.position = "right") +
-  theme(legend.title = element_text(size = 16)) +
-  theme(axis.text = element_text(size = 16)) +
+  theme(axis.title = element_text(size = 18)) +
+  theme(legend.text = element_text(size = 18), legend.position = "none") +
+  theme(legend.title = element_text(size = 18)) +
+  theme(axis.text = element_text(size = 18)) +
   theme(panel.background=element_rect(fill="white"), 
       panel.grid.major = element_line(color = "lightgrey"), 
       panel.grid.minor = element_line(color = "lightgrey"))
@@ -659,15 +681,15 @@ ggplot(dxB1.otu.map.pc1, aes(x=pcoa1, y=pcoa2, color=Comp.1, shape = Depth))+
   labs(x = "13.95% Variance Explained", 
        y = "12.65% Variance Explained",
        title = "All Disturbed Samples except B1")+
-  theme(axis.title = element_text(size = 16)) +
-  theme(legend.text = element_text(size = 16), legend.position = "right") +
-  theme(legend.title = element_text(size = 16)) +
-  theme(axis.text = element_text(size = 16)) +
+  theme(axis.title = element_text(size = 18)) +
+  theme(legend.text = element_text(size = 18), legend.position = "bottom") +
+  theme(legend.title = element_text(size = 18)) +
+  theme(axis.text = element_text(size = 18)) +
   theme(panel.background=element_rect(fill="white"), 
       panel.grid.major = element_line(color = "lightgrey"), 
       panel.grid.minor = element_line(color = "lightgrey"))
 
-ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCoA/viromes/DisturbedxB1_PCoA_PC1.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCoA/viromes/DisturbedxB1_PCoA_PC1.pdf", width = 180, height = 125, units = "mm", dpi = 500)
 
 Comp.1 <- dxB1.map.pc1$Comp.1
 Comp.1.dist <- dist(Comp.1)
@@ -2079,6 +2101,8 @@ d.otu.phylum.stack <- d.otu.phylum.stack %>%
 
 # Prep data frame for plotting
 d.otu.phylum.map <- merge(d.otu.phylum.stack, d.pc1.map, by="ID")
+d.otu.unknown.phylum <- d.otu.phylum.map
+
 d.otu.phylum.map <- d.otu.phylum.map[d.otu.phylum.map$NewHostPhylum != "Unknown", ]
 
 d.otu.phylum.map <- d.otu.phylum.map %>% 
@@ -2104,33 +2128,36 @@ hostphylum <- ggplot(d.otu.phylum.map, aes(x=rank, y=RelAbd, fill=NewHostPhylum)
        title = "Prescribed Burn - Treatment Plots, Disturbed - vOTU Host Prediction by Sample")+
   geom_bar(stat="identity")+
   scale_fill_manual(values=collapsed_phylum_colors) +
-  geom_vline(xintercept = c(0.5,1.5,2.5,3.5,4.5,5.5,6.5,7.5,8.5,9.5,10.5,11.5,12.5,13.5,14.5,15.5,16.5,17.5,18.5,19.5,20.5,21.5,22.5,23.5,24.5,25.5,26.5,27.5,28.5,29.5,30.5,31.5,32.5,33.5,34.5,35.5,36.5,37.5,38.5,39.5,40.5, 41.5,42.5,43.5,44.5,45.5, 46.5, 47.5, 48.5), linetype = "solid", color = "darkgray", linewidth = 0.15)+
+  geom_vline(xintercept = c(0.5,1.5,2.5,3.5,4.5,5.5,6.5,7.5,8.5,9.5,10.5,11.5,12.5,13.5,14.5,15.5,16.5,17.5,18.5,19.5,20.5,21.5,22.5,23.5,24.5,25.5,26.5,27.5,28.5,29.5,30.5,31.5,32.5,33.5,34.5,35.5,36.5,37.5,38.5,39.5,40.5, 41.5,42.5,43.5,44.5,45.5, 46.5, 47.5, 48.5), linetype = "solid", color = "grey20", linewidth = 0.15)+
   theme(
     panel.grid.major = element_blank(),  # Remove major grid lines
     panel.grid.minor = element_blank(),  # Remove minor grid lines
     panel.background = element_blank()
   ) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5),
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, size = 12),
+        axis.text.y = element_text(size = 12),
         legend.position = "bottom") +
   scale_x_continuous(limits = c(0.5,48.5), expand = c(0,0))+
   scale_y_continuous(limits = c(0, 0.5), expand = c(0,0)) +
-  labs(fill = "Host Phylum")
+  labs(fill = "Host Phylum") +
+  theme(axis.title = element_text(size = 18))
 hostphylum <- ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/StackedBar/HostPhylum/burn_disturbed_PC1_phylum.pdf", width = 250, height = 150, units = "mm", dpi = 500)
 
+```
 
-
+```{r}
 #Stats
 d.host.stats <- d.otu.phylum.map
-firm_d <- d.host.stats %>%
-  filter(HostPhylum == "Firmicutes")
-ggplot(firm_d, aes(x = Comp.1, y = RelAbd)) +
+
+acido_d <- d.host.stats %>%
+  filter(HostPhylum == "Acidobacteriota")
+ggplot(acido_d, aes(x = Comp.1, y = RelAbd)) +
   geom_point() +
   labs(title = "Scatter Plot",
        x = "Burn Severity",
-       y = "Relative Abundance of Firmicutes") +
+       y = "Relative Abundance of Acidobacteriota Host") +
   theme_minimal()
-
-cor.test(firm_d$Comp.1, firm_d$RelAbd, method = "spearman")
+cor.test(acido_d$Comp.1, acido_d$RelAbd, method = "spearman")
 
 actino_d <- d.host.stats %>%
   filter(HostPhylum == "Actinobacteriota")
@@ -2138,11 +2165,103 @@ ggplot(actino_d, aes(x = Comp.1, y = RelAbd)) +
   geom_point() +
   labs(title = "Scatter Plot",
        x = "Burn Severity",
-       y = "Relative Abundance of Actinobacteriota") +
+       y = "Relative Abundance of Actinobacteriota Host") +
   theme_minimal()
+cor.test(actino_d$Comp.1, actino_d$RelAbd, method = "spearman")
 
-cor.test(actino_d$Comp.1, firm_d$RelAbd, method = "spearman")
+bact_d <- d.host.stats %>%
+  filter(HostPhylum == "Bacteroidota")
+ggplot(bact_d, aes(x = Comp.1, y = RelAbd)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Relative Abundance of Bacteroidota Host") +
+  theme_minimal()
+cor.test(bact_d$Comp.1, bact_d$RelAbd, method = "spearman")
 
+chloro_d <- d.host.stats %>%
+  filter(HostPhylum == "Chloroflexota")
+ggplot(chloro_d, aes(x = Comp.1, y = RelAbd)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Relative Abundance of Chloroflexota Host") +
+  theme_minimal()
+cor.test(chloro_d$Comp.1, chloro_d$RelAbd, method = "spearman")
+
+cyano_d <- d.host.stats %>%
+  filter(HostPhylum == "Cyanobacteria")
+ggplot(cyano_d, aes(x = Comp.1, y = RelAbd)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Relative Abundance of Cyanobacteria Host") +
+  theme_minimal()
+cor.test(cyano_d$Comp.1, cyano_d$RelAbd, method = "spearman")
+
+firm_d <- d.host.stats %>%
+  filter(HostPhylum == "Firmicutes")
+ggplot(firm_d, aes(x = Comp.1, y = RelAbd)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Relative Abundance of Firmicutes Host") +
+  theme_minimal()
+cor.test(firm_d$Comp.1, firm_d$RelAbd, method = "spearman")
+
+myxo_d <- d.host.stats %>%
+  filter(HostPhylum == "Myxococcota")
+ggplot(myxo_d, aes(x = Comp.1, y = RelAbd)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Relative Abundance of Myxococcota Host") +
+  theme_minimal()
+cor.test(myxo_d$Comp.1, myxo_d$RelAbd, method = "spearman")
+
+nitro_d <- d.host.stats %>%
+  filter(HostPhylum == "Nitrospirota")
+ggplot(nitro_d, aes(x = Comp.1, y = RelAbd)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Relative Abundance of Nitrospirota Host") +
+  theme_minimal()
+cor.test(nitro_d$Comp.1, nitro_d$RelAbd, method = "spearman")
+
+proteo_d <- d.host.stats %>%
+  filter(HostPhylum == "Proteobacteria")
+ggplot(proteo_d, aes(x = Comp.1, y = RelAbd)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Relative Abundance of Proteobacteria Host") +
+  theme_minimal()
+cor.test(proteo_d$Comp.1, proteo_d$RelAbd, method = "spearman")
+
+verru_d <- d.host.stats %>%
+  filter(HostPhylum == "Verrucomicrobiota")
+ggplot(verru_d, aes(x = Comp.1, y = RelAbd)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Relative Abundance of Verrucomicrobiota Host") +
+  theme_minimal()
+cor.test(verru_d$Comp.1, verru_d$RelAbd, method = "spearman")
+
+unknown_d <- d.otu.unknown.phylum %>%
+  filter(HostPhylum == "Unknown")
+unknown_d$Detected <- 1 - unknown_d$RelAbd
+ggplot(unknown_d, aes(x = Comp.1, y = Detected)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Relative Abundance of Detected Host") +
+  theme_minimal()
+cor.test(unknown_d$Comp.1, unknown_d$Detected, method = "spearman")
+
+
+average_detection <- mean(unknown_d$Detected, na.rm = TRUE)
 ```
 
 # Host Prediction Stats
@@ -2362,6 +2481,113 @@ kruskal.test(RelAbd ~ Burn, firm_cd)
 #kruskal.test(RelAbd ~ Burn, plancto_cd)
 kruskal.test(RelAbd ~ Burn, proteo_cd)
 #kruskal.test(RelAbd ~ Burn, verru_cd)
+```
+
+# Corncob
+
+```{r}
+library(remotes)
+#remotes::install_github("statdivlab/corncob")
+library(corncob)
+library(magrittr)
+
+# subset with just one time point at a time (remove time component)
+# and then do minimum threshold - find them in x number of sample (base this on replicates...or something like that, present in a percentage of the samples)
+
+# T3, burn samples
+T3d.pc1 <- semi_join(d_pc1, T3d.map, by = "ID")
+T3d.otu.da <- T3d.count
+T3d.otu.da <- rownames_to_column(T3d.otu.da, var = "vOTU")
+T3_long <- T3d.otu.da %>%
+  pivot_longer(cols=2:16, names_to = "ID", values_to = "Count")
+
+subgroup <- blodgett_data %>%
+  select(ID, SubPlot, Date)
+
+T3_long <- left_join(T3_long, subgroup, by="ID")
+
+#### THIS DOESN'T FILTER THE TABLE ENOUGH ... what this is doing now is making sure there is at least 1 count of
+#### a vOTU in both replicates of a subplot at a timepoint
+#### I think I need to do something more stringent, probably with a minimum count of... 10?
+
+filter_contigs <- function(data) {
+  data %>%
+    group_by(vOTU, SubPlot, Date) %>%
+    filter(all(Count > 20)) %>%
+    ungroup()
+}
+
+T3_filtered <- filter_contigs(T3_long)
+
+filtered_abundance_wide <- T3_filtered %>%
+  pivot_wider(names_from = ID, values_from = Count) %>%
+  select(vOTU, all_of(unique(T3d.map$ID)))
+
+summarized_data <- filtered_abundance_wide %>%
+  group_by(vOTU) %>%
+  summarize_all(sum, na.rm = TRUE)
+
+#make sure Comp.1 is numeric
+T3d.pc1 <- as.data.frame(T3d.pc1)
+T3d.pc1 <- col_to_row(T3d.pc1, "ID", "ID")
+
+set.seed(1)
+T3d_da_analysis <- differentialTest(formula = ~ Comp.1,
+                                phi.formula = ~ Comp.1,
+                                formula_null = ~ 1,
+                                phi.formula_null = ~ Comp.1,
+                                test = "Wald", boot = FALSE,
+                                data = T3d.otu.da, 
+                                sample_data = T3d.pc1, 
+                                taxa_are_rows = TRUE, 
+                                fdr_cutoff = 0.05)
+T3d_da_analysis
+T3d_da_analysis$significant_taxa
+plot(T3d_da_analysis)
+
+# T4, burn samples
+T4d.pc1 <- semi_join(d_pc1, T4d.map, by = "ID")
+T4d.otu.da <- T4d.count
+T4d.otu.da <- T4d.otu.da[rowSums(T4d.otu.da>1) >11,]
+T4d.pc1 <- as.data.frame(T4d.pc1)
+T4d.pc1 <- col_to_row(T4d.pc1, "ID", "ID")
+
+set.seed(1)
+T4d_da_analysis <- differentialTest(formula = ~ Comp.1,
+                                phi.formula = ~ Comp.1,
+                                formula_null = ~ 1,
+                                phi.formula_null = ~ Comp.1,
+                                test = "Wald", boot = FALSE,
+                                data = T4d.otu.da, 
+                                sample_data = T4d.pc1, 
+                                taxa_are_rows = TRUE, 
+                                fdr_cutoff = 0.05)
+T4d_da_analysis
+T4d_da_analysis$significant_taxa
+plot(T4d_da_analysis)
+
+# as PC1 increases, these vOTUs are increasing/decreasing
+# post combining - p-value correct 
+
+# Questions to ask Amisha ---
+# Confirm that this will only work on count data
+# Reasonable thresholds for the analysis... 
+  # some ideas... at least 1 in every single sample? 
+  # at least some large amount in at least 8 samples...because this would mean maybe they were all found in the control samples
+  # additional p-value?
+
+
+# correlations between vOTUs and PC1 scores
+
+# map a distribution of PC1 scores
+plot(hist(d_pc1$Comp.1))
+
+
+
+#hellinger transformation on vOTU abundances
+#vOTU abundances and PC1 scores - regress (spearman correlation - rank)
+# corect p-values 
+
 ```
 
 # Determining # of unique vOTUs in each depth and in both depths in each plot over time

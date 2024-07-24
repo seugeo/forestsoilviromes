@@ -391,7 +391,8 @@ pcoa.plot.p.disturbance(b.asv.map, x_col = pcoa1, y_col = pcoa2, color_col= Dist
 bd.asv.dist=vegdist(t(bd.asv.rare), method = "bray")
 bd.asv.pcoa <- pcoa(bd.asv.dist)
 bd.asv.pcoa.points <- pcoa.points(bd.asv.pcoa)
-bd.asv.map <- pcoa.map(bd.asv.pcoa.points, bd_map.pc1)
+bd.asv.pcoa.points <- rownames_to_column(bd.asv.pcoa.points, var ="MapID")
+bd.asv.map=left_join(bd.asv.pcoa.points,bd_map.pc1,by="MapID")
 variance(bd.asv.pcoa, 1)
 variance(bd.asv.pcoa, 2)
 
@@ -400,8 +401,8 @@ pcoa.plot.plot(bd.asv.map, x_col = pcoa1, y_col = pcoa2, color_col= Plot, shape_
 ggplot(bd.asv.map, aes(x=pcoa1, y=pcoa2, color=Plot))+
   geom_point(size = 3) +
   #scale_color_gradient(low = "yellow", high = "red") +
-  labs(x = "28.25% Variance Explained", 
-       y = "16.64% Variance Explained",
+  labs(x = "28.26% Variance Explained", 
+       y = "16.68% Variance Explained",
        title = "Burn Plots, Disturbed")+
   theme(axis.title = element_text(size = 16)) +
   theme(legend.text = element_text(size = 16), legend.position = "right") +
@@ -418,13 +419,13 @@ ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PC
 ggplot(bd.asv.map, aes(x=pcoa1, y=pcoa2, color=Comp.1))+
   geom_point(size = 3) +
   scale_color_gradient(low = "yellow", high = "red") +
-  labs(x = "PCo1 (28.25% variance explained)", 
-       y = "PCo2 (16.61% variance explained)",
+  labs(x = "PCo1 (28.26% variance explained)", 
+       y = "PCo2 (16.68% variance explained)",
        title = "Burn Plots, Disturbed Samples - ASV with PC1 gradient")+
-  theme(axis.title = element_text(size = 16)) +
-  theme(legend.text = element_text(size = 16), legend.position = "right") +
-  theme(legend.title = element_text(size = 16)) +
-  theme(axis.text = element_text(size = 16)) +
+  theme(axis.title = element_text(size = 18)) +
+  theme(legend.text = element_text(size = 18), legend.position = "right") +
+  theme(legend.title = element_text(size = 18)) +
+  theme(axis.text = element_text(size = 18)) +
   theme(panel.background=element_rect(fill="white"), 
       panel.grid.major = element_line(color = "lightgrey"), 
       panel.grid.minor = element_line(color = "lightgrey"))
@@ -791,6 +792,8 @@ tax_bd <- left_join(bd.id.asv, tax_filtered, by = "OTU_ID")
 check_column <- "OTU_ID"
 all(bd.id.asv[[check_column]] == tax_bd[[check_column]])
 unique(tax_bd$Phylum)
+colSums(tax_bd[, 1:48])
+
 # pivot table and group by Phylum
 tax_bd.long <- pivot_longer(tax_bd, cols=1:48, names_to = "MapID", values_to = "counts")
 bd.phylum.long <- group_by(tax_bd.long, Phylum, MapID) %>%
@@ -825,7 +828,7 @@ bd_phylum <- ggplot(bd.phylum.map, aes(x=rank, y=counts, fill=NewPhylum))+
   geom_bar(stat="identity", position = "fill", width = 0.75)+
   #geom_vline(xintercept = c(8.5, 16.5, 24.5, 32.5), linetype = "solid", color = "black", size = 0.75)+
   scale_fill_manual(values=collapsed_phylum_colors) +
-  geom_vline(xintercept = c(0.5,1.5,2.5,3.5,4.5,5.5,6.5,7.5,8.5,9.5,10.5,11.5,12.5,13.5,14.5,15.5,16.5,17.5,18.5,19.5,20.5,21.5,22.5,23.5,24.5,25.5,26.5,27.5,28.5,29.5,30.5,31.5,32.5,33.5,34.5,35.5,36.5,37.5,38.5,39.5,40.5, 41.5,42.5,43.5,44.5,45.5,46.5, 47.5, 48.5), linetype = "solid", color = "darkgray", linewidth = 0.15)+
+  geom_vline(xintercept = c(0.5,1.5,2.5,3.5,4.5,5.5,6.5,7.5,8.5,9.5,10.5,11.5,12.5,13.5,14.5,15.5,16.5,17.5,18.5,19.5,20.5,21.5,22.5,23.5,24.5,25.5,26.5,27.5,28.5,29.5,30.5,31.5,32.5,33.5,34.5,35.5,36.5,37.5,38.5,39.5,40.5, 41.5,42.5,43.5,44.5,45.5,46.5, 47.5, 48.5), linetype = "solid", color = "grey20", linewidth = 0.15)+
   scale_x_continuous(limits = c(0.5,48.5), expand = c(0,0))+
   theme(
     panel.grid.major = element_blank(),  # Remove major grid lines
@@ -833,26 +836,27 @@ bd_phylum <- ggplot(bd.phylum.map, aes(x=rank, y=counts, fill=NewPhylum))+
     panel.background = element_blank()
   ) +
   labs(fill = "Phylum") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5),
-        legend.position = "bottom")
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, size = 12),
+        axis.text.y = element_text(size = 12),
+        legend.position = "bottom")+
+    theme(axis.title = element_text(size = 18))
 
 bd_phylum
-bd_phylum <- ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/StackedBar/ASVPhylum/bd_phylum_PC1.pdf", width = 190, height = 100, units = "mm", dpi = 500)
+bd_phylum <- ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/StackedBar/ASVPhylum/bd_phylum_PC1.pdf", width = 250, height = 150, units = "mm", dpi = 500)
+```
 
-
-# I think I need to change everything to proportion instead of counts...
-
+Phyla Stats
+```{r}
 bd.stats <- bd.phylum.map
-firm_bd <- bd.stats %>%
-  filter(Phylum == "Firmicutes")
-ggplot(firm_bd, aes(x = Comp.1, y = counts)) +
+acido_bd <- bd.stats %>%
+  filter(Phylum == "Acidobacteriota")
+ggplot(acido_bd, aes(x = Comp.1, y = counts)) +
   geom_point() +
   labs(title = "Scatter Plot",
        x = "Burn Severity",
-       y = "Counts of Firmicutes") +
+       y = "Counts of Acidobacteriota") +
   theme_minimal()
-
-cor.test(firm_bd$Comp.1, firm_bd$counts, method = "spearman")
+cor.test(acido_bd$Comp.1, acido_bd$counts, method = "spearman")
 
 actino_bd <- bd.stats %>%
   filter(Phylum == "Actinobacteriota")
@@ -862,7 +866,6 @@ ggplot(actino_bd, aes(x = Comp.1, y = counts)) +
        x = "Burn Severity",
        y = "Counts of Actinobacteriota") +
   theme_minimal()
-
 cor.test(actino_bd$Comp.1, actino_bd$counts, method = "spearman")
 
 bact_bd <- bd.stats %>%
@@ -873,7 +876,76 @@ ggplot(bact_bd, aes(x = Comp.1, y = counts)) +
        x = "Burn Severity",
        y = "Counts of Bacteroidota") +
   theme_minimal()
-
 cor.test(bact_bd$Comp.1, bact_bd$counts, method = "spearman")
+
+chloro_bd <- bd.stats %>%
+  filter(Phylum == "Chloroflexota")
+ggplot(chloro_bd, aes(x = Comp.1, y = counts)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Counts of Chloroflexota") +
+  theme_minimal()
+cor.test(chloro_bd$Comp.1, chloro_bd$counts, method = "spearman")
+
+firm_bd <- bd.stats %>%
+  filter(Phylum == "Firmicutes")
+ggplot(firm_bd, aes(x = Comp.1, y = counts)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Counts of Firmicutes") +
+  theme_minimal()
+cor.test(firm_bd$Comp.1, firm_bd$counts, method = "spearman")
+
+gemma_bd <- bd.stats %>%
+  filter(Phylum == "Gemmatimonadota")
+ggplot(gemma_bd, aes(x = Comp.1, y = counts)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Counts of Gemmatimonadota") +
+  theme_minimal()
+cor.test(gemma_bd$Comp.1, gemma_bd$counts, method = "spearman")
+
+myxo_bd <- bd.stats %>%
+  filter(Phylum == "Myxococcota")
+ggplot(myxo_bd, aes(x = Comp.1, y = counts)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Counts of Myxococcota") +
+  theme_minimal()
+cor.test(myxo_bd$Comp.1, myxo_bd$counts, method = "spearman")
+
+plancto_bd <- bd.stats %>%
+  filter(Phylum == "Planctomycetota")
+ggplot(plancto_bd, aes(x = Comp.1, y = counts)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Counts of Planctomycetota") +
+  theme_minimal()
+cor.test(plancto_bd$Comp.1, plancto_bd$counts, method = "spearman")
+
+proteo_bd <- bd.stats %>%
+  filter(Phylum == "Proteobacteria")
+ggplot(proteo_bd, aes(x = Comp.1, y = counts)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Counts of Proteobacteria") +
+  theme_minimal()
+cor.test(proteo_bd$Comp.1, proteo_bd$counts, method = "spearman")
+
+verru_bd <- bd.stats %>%
+  filter(Phylum == "Verrucomicrobiota")
+ggplot(verru_bd, aes(x = Comp.1, y = counts)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Counts of Verrucomicrobiota") +
+  theme_minimal()
+cor.test(verru_bd$Comp.1, verru_bd$counts, method = "spearman")
 
 ```

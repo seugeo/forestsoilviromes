@@ -408,6 +408,39 @@ B4A_Temperature <- ggsave("B4A_Temperature.pdf", width = 200, height = 50, units
 
 
 
+# PRECIPITATION DATA
+```{r}
+library(lubridate)
+library(scales)
+precip=read_delim("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/input data/precip_blodgett.txt", delim = "\t", col_names = TRUE)
+
+precip$Date <- as.Date(precip$Date, format = "%m/%d/%Y")
+highlight_dates <- as.Date(c("2021-04-05", "2021-04-18", "2021-04-22", "2021-04-27", "2021-05-08"))
+sample_dates <- as.Date(c("2021-04-05", "2021-04-18", "2021-04-27", "2021-05-08"))
+burn_date <- as.Date(c("2021-04-22"))
+
+ggplot(precip, aes(x = Date, y = Precip_mm, group = 1)) +
+  geom_line(color = "royalblue", size = 1) + 
+  #geom_point(color = "royalblue") +
+  geom_vline(xintercept = as.numeric(sample_dates), color = "grey40", linetype = "longdash", size = 1.2) +
+  geom_vline(xintercept = as.numeric(burn_date), color = "orange", linetype = "longdash", size = 1.2) +
+  scale_x_date(
+    breaks = highlight_dates,
+    labels = date_format("%b %d, %Y")
+  ) +
+  labs(title = "Precipitation Trend Over Time",
+       x = "Date",
+       y = "Precipitation (mm)") +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 12),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/LineGraph/Precipitation.pdf", width = 200, height = 100, units = "mm", dpi = 500)
+
+```
+
 # PHYSICOCHEMICAL DATA
 ```{r}
 # Upload Physicochemical Data
@@ -1071,11 +1104,22 @@ pca_plot <- ggplot(b_pca_map, aes(x = Comp.1, y = Comp.2, color = Disturbance, s
   #geom_text(data = loadings, 
             #aes(x = Comp.1 * 10, y = Comp.2 * 10, label = rownames(loadings)), 
             #vjust = 1.5, color = "black") +
-  theme_minimal() +
   labs(title = "PCA Plot with Variable Vectors",
        x = "PCA1, 53.4% Variance Explained",
-       y = "PCA2, 15.5% Variance Explained")
-ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCA/All_PCA_princomp.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+       y = "PCA2, 15.5% Variance Explained") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 18),
+    axis.title.x = element_text(size = 18),
+    axis.title.y = element_text(size = 18),
+    axis.text.x = element_text(size = 18),
+    axis.text.y = element_text(size = 18),
+    legend.title = element_text(size = 18),
+    legend.text = element_text(size = 18), 
+    legend.position = "bottom"
+  )
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCA/All_PCA_princomp.pdf", width = 220, height = 150, units = "mm", dpi = 500)
 ```
 
 
@@ -1143,90 +1187,7 @@ cor_pvalues <- cor_matrix$P
 ```
 
 
-# Corncob
 
-```{r}
-library(remotes)
-#remotes::install_github("statdivlab/corncob")
-library(corncob)
-library(magrittr)
-
-pc1 <- as.data.frame(pc1)
-pc1 <- rownames_to_column(pc1, var = "ID")
-
-# also subset with just one time point at a time (remove time component)
-# and then do minimum threshold - find them in x number of sample (base this on replicates...or something like that, present in a percentage of the samples)
-# also... T3.map is from the Ch2Blodgett_virome.Rmd
-# T3
-T3.pc1 <- semi_join(pc1, T3.map, by = "ID")
-T3.otu.da <- T3.count
-T3.otu.da <- T3.otu.da[rowSums(T3.otu.da>1) >22,]
-
-#make sure Comp.1 is numeric
-T3.pc1 <- as.data.frame(T3.pc1)
-T3.pc1 <- col_to_row(T3.pc1, "ID", "ID")
-
-set.seed(1)
-T3_da_analysis <- differentialTest(formula = ~ Comp.1,
-                                phi.formula = ~ Comp.1,
-                                formula_null = ~ 1,
-                                phi.formula_null = ~ Comp.1,
-                                test = "Wald", boot = FALSE,
-                                data = T3.otu.da, 
-                                sample_data = T3.pc1, 
-                                taxa_are_rows = TRUE, 
-                                fdr_cutoff = 0.05)
-T3_da_analysis
-T3_da_analysis$significant_taxa
-plot(T3_da_analysis)
-
-# T4
-T4.pc1 <- semi_join(pc1, T4.map, by = "ID")
-T4.otu.da <- T4.count
-T4.otu.da <- T4.otu.da[rowSums(T4.otu.da>1) >19,]
-T4.pc1 <- as.data.frame(T4.pc1)
-T4.pc1 <- col_to_row(T4.pc1, "ID", "ID")
-
-set.seed(1)
-T4_da_analysis <- differentialTest(formula = ~ Comp.1,
-                                phi.formula = ~ Comp.1,
-                                formula_null = ~ 1,
-                                phi.formula_null = ~ Comp.1,
-                                test = "Wald", boot = FALSE,
-                                data = T4.otu.da, 
-                                sample_data = T4.pc1, 
-                                taxa_are_rows = TRUE, 
-                                fdr_cutoff = 0.05)
-T4_da_analysis
-T4_da_analysis$significant_taxa
-plot(T4_da_analysis)
-
-# as PC1 increases, these vOTUs are increasing/decreasing
-# post combining - p-value correct 
-
-# Questions to ask Amisha ---
-# Confirm that this will only work on count data
-# Reasonable thresholds for the analysis... 
-  # some ideas... at least 1 in every single sample? 
-  # at least some large amount in at least 8 samples...because this would mean maybe they were all found in the control samples
-  # additional p-value?
-
-
-# correlations between vOTUs and PC1 scores
-
-# map a distribution of PC1 scores
-plot(hist(pc1$Comp.1))
-
-
-
-#hellinger transformation on vOTU abundances
-#vOTU abundances and PC1 scores - regress (spearman correlation - rank)
-# corect p-values 
-
-
-
-
-```
 
 
 
@@ -1601,7 +1562,17 @@ pca_plot <- ggplot(d_pca_map, aes(x = Comp.1, y = Comp.2, color = Plot)) +
   theme_minimal() +
   labs(title = "PCA Plot with Variable Vectors",
        x = "PCA1, 54.9% Variance Explained",
-       y = "PCA2, 17.5% Variance Explained")
+       y = "PCA2, 17.5% Variance Explained") +
+  theme(
+    plot.title = element_text(size = 18),
+    axis.title.x = element_text(size = 18),
+    axis.title.y = element_text(size = 18),
+    axis.text.x = element_text(size = 18),
+    axis.text.y = element_text(size = 18),
+    legend.title = element_text(size = 18),
+    legend.text = element_text(size = 18), 
+    legend.position = "bottom"
+  )
 ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCA/Disturbed_PCA_princomp.pdf", width = 200, height = 125, units = "mm", dpi = 500)
 
 # Extract PC1 scores
@@ -2029,22 +2000,24 @@ ggsave("b_k_disturbance_pca.pdf", width = 200, height = 125, units = "mm", dpi =
 # INDIVIDUAL VARIABLES - BOX PLOTS
 # Soil Moisture
 ```{r}
-ggplot(b.metadata, aes(x = Timepoint, y = Moisture, fill = Treatment)) +
+moisture <- ggplot(b.metadata, aes(x = Timepoint, y = Moisture, fill = Treatment)) +
   annotate('rect', xmin = -Inf, xmax = 2.5, ymin = -Inf, ymax = Inf, fill = 'lightgreen', alpha = 0.5) +
   geom_boxplot(outlier.shape=NA) +
   xlab("Timepoint") +
   ylab("Gravimetric Soil Moisture (%)") +
   theme_bw() +
   geom_jitter(aes(color = Depth), position = position_jitter(), size = 1.5) +
-  theme(axis.title = element_text(size = 12)) +
+  theme(axis.title = element_text(size = 16)) +
   theme(legend.position = "none") +
-  theme(legend.text = element_text(size = 15)) +
-  theme(axis.text = element_text(size = 12)) +
-  theme(axis.text.x = element_text(size = 12)) +
+  theme(legend.text = element_text(size = 16)) +
+  theme(axis.text = element_text(size = 16)) +
+  theme(axis.text.x = element_text(size = 16)) +
   scale_fill_manual(name = "Treatment", 
                     values = treatment_colors) +
   scale_color_manual(values = depth_colors) +
   facet_wrap(~ Treatment)
+
+moisture + theme(strip.text = element_text(size=16))
 ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/SingleEnvironmental/blodgett_moisture.pdf", width = 150, height = 100, units = "mm", dpi = 500)
 
 # STATS!!!
@@ -2345,6 +2318,24 @@ library(reshape2)
 colnames(b.metadata)
 b.metadata.long <- melt(b.metadata, id.vars=c("SampleID","Depth","Treatment","Date","Disturbance","Plot", "Timepoint", "virome"), measure.vars=colnames(b.metadata)[3:34])
 ```
+
+# Levene's variation in data???
+```{r}
+T3.metadata
+library(car)
+levene_result <- leveneTest(SoilpH ~ Treatment, data = T3.metadata)
+
+levene_function <- function(var) {
+  formula <- as.formula(paste(var, "~ Treatment"))
+  leveneTest(formula, data = T3.metadata)
+}
+
+variable <- variables$Variable
+
+levene_results <- lapply(variable, levene_function)
+names(levene_results) <- variable
+```
+
 # subset to only 0-3 cm
 ```{r}
 b.03.long <- subset(b.metadata.long, Depth =="0-3cm")

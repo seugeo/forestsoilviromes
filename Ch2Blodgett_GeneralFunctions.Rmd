@@ -25,8 +25,8 @@ date: "2024-03-05"
   depth_shapes <- c(16,17)
   depth_order <- c('0-3cm','3-6cm')
   depth_colors <- c("brown", "orange")
-  collapsed_phylum_colors <- c("Acidobacteriota" = "#7526C3", "Actinobacteriota" = "#75d644", "Altarchaeota" = "#F9D3D7","Bacteroidota" = "#FAE500", "Bdellovibrionota" = "#0026F9", "Chloroflexota" = "#2665A1", "Cyanobacteria" = "#1CFEDA", "Desulfobacterota" = "#6C328B", "Firmicutes" = "#2ead57", "Gemmatimonadota" = "#84530D", "Halobacteriota" = "#B6EBEF", "Methanobacteriota" = "#CBC279", "Myxococcota" = "#FF942E", "Nitrospirota" = "#909AFE", "Patescibacteria" = "#22CBFD", "Planctomycetota" =  "#fa4668", "Proteobacteria" = "#D78EFC", "Verrucomicrobiota" = "#FE9B95", "Other" = "darkgray")
-  collapsed_phyla_order <- c("Acidobacteriota", "Actinobacteriota", "Altarchaeota", "Bacteroidota", "Bdellovibrionota", "Chloroflexota", "Cyanobacteria", "Desulfobacterota", "Firmicutes", "Gemmatimonadota", "Halobacteriota", "Methanobacteriota", "Myxococcota", "Nitrospirota", "Patescibacteria", "Planctomycetota", "Proteobacteria", "Verrucomicrobiota", "Other")
+  collapsed_phylum_colors <- c("Acidobacteriota" = "#7526C3", "Actinobacteriota" = "#75d644", "Altarchaeota" = "#F9D3D7","Bacteroidota" = "#FAE500", "Bdellovibrionota" = "#0026F9", "Chloroflexota" = "#2665A1", "Cyanobacteria" = "#1CFEDA", "Desulfobacterota" = "#6C328B", "Firmicutes" = "#2ead57", "Gemmatimonadota" = "#84530D", "Halobacteriota" = "#B6EBEF", "Methanobacteriota" = "#CBC279", "Myxococcota" = "#FF942E", "Nitrospirota" = "#909AFE", "Patescibacteria" = "#22CBFD", "Planctomycetota" =  "#fa4668", "Proteobacteria" = "#D78EFC", "Verrucomicrobiota" = "#FE9B95", "Unknown Phylum" = "grey30", "Other" = "darkgray")
+  collapsed_phyla_order <- c("Acidobacteriota", "Actinobacteriota", "Altarchaeota", "Bacteroidota", "Bdellovibrionota", "Chloroflexota", "Cyanobacteria", "Desulfobacterota", "Firmicutes", "Gemmatimonadota", "Halobacteriota", "Methanobacteriota", "Myxococcota", "Nitrospirota", "Patescibacteria", "Planctomycetota", "Proteobacteria", "Verrucomicrobiota", "Unknown Phylum", "Other")
   
 # DATA PREPARATION
 # CONVERT COLUMN TO ROWNAMES # make sure to put "" around col and name_values
@@ -188,10 +188,10 @@ pcoa.plot.plot.disturbance <- function(data.map, x_col, y_col, color_col, shape_
   labs(x = ifelse(!is.null(x_label), x_label, as_label(enquo(x_col))), 
        y = ifelse(!is.null(y_label), y_label, as_label(enquo(y_col))),
        title = title)+
-  theme(axis.title = element_text(size = 25)) +
-  theme(legend.text = element_text(size = 20), legend.position = "right") +
-  theme(legend.title = element_text(size = 25)) +
-  theme(axis.text = element_text(size = 20)) +
+  theme(axis.title = element_text(size = 18)) +
+  theme(legend.text = element_text(size = 18), legend.position = "right") +
+  theme(legend.title = element_text(size = 18)) +
+  theme(axis.text = element_text(size = 18)) +
   theme(panel.background=element_rect(fill="white"), 
       panel.grid.major = element_line(color = "lightgrey"), 
       panel.grid.minor = element_line(color = "lightgrey"))
@@ -207,10 +207,10 @@ pcoa.sub.plot.disturbance <- function(data.map, x_col, y_col, color_col, shape_c
   labs(x = ifelse(!is.null(x_label), x_label, as_label(enquo(x_col))), 
        y = ifelse(!is.null(y_label), y_label, as_label(enquo(y_col))),
        title = title)+
-  theme(axis.title = element_text(size = 20)) +
-  theme(legend.text = element_text(size = 20), legend.position = "right") +
-  theme(legend.title = element_text(size = 20)) +
-  theme(axis.text = element_text(size = 20)) +
+  theme(axis.title = element_text(size = 18)) +
+  theme(legend.text = element_text(size = 18), legend.position = "right") +
+  theme(legend.title = element_text(size = 18)) +
+  theme(axis.text = element_text(size = 18)) +
   theme(panel.background=element_rect(fill="white"), 
       panel.grid.major = element_line(color = "lightgrey"), 
       panel.grid.minor = element_line(color = "lightgrey"))
