@@ -12,6 +12,8 @@ library(geosphere)
 library(pheatmap)
 library(Hmisc)
 library(reshape2)
+library(RColorBrewer)
+
 ```
 
 # I don't know if I actually use these packages...
@@ -73,6 +75,7 @@ blodgett_gps <- blodgett_gps %>%
     Date == "6/20/2021" ~ "T5"))
 
 blodgett_gps <- blodgett_gps[!(blodgett_gps$virome=="no"),]
+
 blodgett_gps_T1 <- blodgett_gps[(blodgett_gps$Timepoint=="T1"),]
 blodgett_gps_T1 <- blodgett_gps_T1 %>%
   select(SampleID, longitude, latitude)
@@ -92,6 +95,26 @@ blodgett_gps_T2$longitude <- as.numeric(blodgett_gps_T2$longitude)
 blodgett_gps_T2$latitude <- as.numeric(blodgett_gps_T2$latitude)
 dist_matrix_vinellips <- distm(blodgett_gps_T2, fun = distVincentyEllipsoid)
 rownames(dist_matrix_vinellips) <- colnames(dist_matrix_vinellips) <- rownames(blodgett_gps_T2)
+
+blodgett_gps_T3 <- blodgett_gps[(blodgett_gps$Timepoint=="T3"),]
+blodgett_gps_T3 <- blodgett_gps_T3 %>%
+  select(SampleID, longitude, latitude)
+blodgett_gps_T3 <- column_to_rownames(blodgett_gps_T3, var = "SampleID")
+blodgett_gps_T3 <- as.data.frame(blodgett_gps_T3)
+blodgett_gps_T3$longitude <- as.numeric(blodgett_gps_T3$longitude)
+blodgett_gps_T3$latitude <- as.numeric(blodgett_gps_T3$latitude)
+T3_dist_matrix_vinellips <- distm(blodgett_gps_T3, fun = distVincentyEllipsoid)
+rownames(T3_dist_matrix_vinellips) <- colnames(T3_dist_matrix_vinellips) <- rownames(blodgett_gps_T3)
+
+blodgett_gps_T4 <- blodgett_gps[(blodgett_gps$Timepoint=="T4"),]
+blodgett_gps_T4 <- blodgett_gps_T4 %>%
+  select(SampleID, longitude, latitude)
+blodgett_gps_T4 <- column_to_rownames(blodgett_gps_T4, var = "SampleID")
+blodgett_gps_T4 <- as.data.frame(blodgett_gps_T4)
+blodgett_gps_T4$longitude <- as.numeric(blodgett_gps_T4$longitude)
+blodgett_gps_T4$latitude <- as.numeric(blodgett_gps_T4$latitude)
+T4_dist_matrix_vinellips <- distm(blodgett_gps_T4, fun = distVincentyEllipsoid)
+rownames(T4_dist_matrix_vinellips) <- colnames(T4_dist_matrix_vinellips) <- rownames(blodgett_gps_T4)
 
 #blodgett_gps <- blodgett_gps %>%
   #select(SubPlot, longitude, latitude)
@@ -187,6 +210,76 @@ ggplot(plot_data, aes(x = physical_dist_vector, y = bray_sim_vector)) +
 ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/ScatterPlot/distance_decay_T2virome.pdf", width = 200, height = 125, units = "mm", dpi = 500)
 ```
 
+# DISTANCE DECAY (T3)
+```{r}
+bray_dist_matrix <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/T3.otu.dis.matrix.RDS")
+physical_dist_matrix <- T3_dist_matrix_vinellips
+
+bray_dist_vector <- as.vector(as.dist(bray_dist_matrix))
+physical_dist_vector <- as.vector(as.dist(T3_dist_matrix_vinellips))
+bray_sim_vector <- 1 - bray_dist_vector
+
+cor_test_result <- cor.test(physical_dist_vector, bray_sim_vector)
+model <- lm(bray_sim_vector ~ physical_dist_vector)
+model_summary <- summary(model)
+
+slope <- model_summary$coefficients[2,1]
+p_value <- coef(summary(model))[2,4]
+correlation_coefficient <- cor_test_result$estimate
+
+plot_data <- data.frame(PhysicalDistance = physical_dist_vector, BrayCurtisSimilarity = bray_sim_vector)
+
+ggplot(plot_data, aes(x = physical_dist_vector, y = bray_sim_vector)) +
+  geom_point()+
+  geom_smooth(method = "lm", col = "black") +
+  labs(
+    title = "Distance Decay of Bray-Curtis Similarity, T3",
+    x = "Physical Distance (meters)",
+    y = "Bray-Curtis Similarity",
+  ) +
+  theme_bw() +
+  annotate("text", x = Inf, y = Inf, label = paste0("p-value = ", format(p_value, scientific = TRUE)), hjust = 2, vjust = 2.5, size = 5) + 
+  annotate("text", x = Inf, y = Inf, label = sprintf("slope = %.3e", round(slope, 3)), hjust = 2.4, vjust = 3.7, size = 5) + 
+  annotate("text", x = Inf, y = Inf, label = paste0("r = ", round(correlation_coefficient, 3)), hjust = 4.2, vjust = 4.9, size = 5)
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/ScatterPlot/distance_decay_T3virome.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
+
+# DISTANCE DECAY (T4)
+```{r}
+bray_dist_matrix <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/T4.otu.dis.matrix.RDS")
+physical_dist_matrix <- T4_dist_matrix_vinellips
+
+bray_dist_vector <- as.vector(as.dist(bray_dist_matrix))
+physical_dist_vector <- as.vector(as.dist(T4_dist_matrix_vinellips))
+bray_sim_vector <- 1 - bray_dist_vector
+
+cor_test_result <- cor.test(physical_dist_vector, bray_sim_vector)
+model <- lm(bray_sim_vector ~ physical_dist_vector)
+model_summary <- summary(model)
+
+slope <- model_summary$coefficients[2,1]
+p_value <- coef(summary(model))[2,4]
+correlation_coefficient <- cor_test_result$estimate
+
+plot_data <- data.frame(PhysicalDistance = physical_dist_vector, BrayCurtisSimilarity = bray_sim_vector)
+
+ggplot(plot_data, aes(x = physical_dist_vector, y = bray_sim_vector)) +
+  geom_point()+
+  geom_smooth(method = "lm", col = "black") +
+  labs(
+    title = "Distance Decay of Bray-Curtis Similarity, T4",
+    x = "Physical Distance (meters)",
+    y = "Bray-Curtis Similarity",
+  ) +
+  theme_bw() +
+  annotate("text", x = Inf, y = Inf, label = paste0("p-value = ", format(p_value, scientific = TRUE)), hjust = 2, vjust = 2.5, size = 5) + 
+  annotate("text", x = Inf, y = Inf, label = sprintf("slope = %.3e", round(slope, 3)), hjust = 2.4, vjust = 3.7, size = 5) + 
+  annotate("text", x = Inf, y = Inf, label = paste0("r = ", round(correlation_coefficient, 3)), hjust = 4.2, vjust = 4.9, size = 5)
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/ScatterPlot/distance_decay_T4virome.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
+
 # TEMPERATURE DATA
 # U1A
 ```{r}
@@ -200,6 +293,8 @@ temp_U1A$DateTime <- as.POSIXct(paste(temp_U1A$Date, temp_U1A$Time), format = "%
 temp_U1A_long <- pivot_longer(temp_U1A, cols = starts_with("Depth"), names_to = "Probe_ID", values_to = "Temperature")
 specific_intervals <- temp_U1A_long %>%
   filter(minute(DateTime) == 0)
+temp_U1A_long <- temp_U1A_long %>%
+  mutate(Plot = "U1A")
 U1_Temperature <- ggplot(temp_U1A_long, aes(x = DateTime, y = Temperature, color = Probe_ID))+
   #geom_point(size = 0.25)+
   geom_line(size = 1.25)+
@@ -212,7 +307,7 @@ U1_Temperature <- ggsave("U1_Temperature.pdf", width = 200, height = 50, units =
 ```
 # U2A
 ```{r}
-temp_U2A=read_delim("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/Blodgett/Datalogger Temps/U2A.txt", delim = "\t", col_names = TRUE)
+temp_U2A=read_delim("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/Field Experiment/Datalogger Temps/U2A.txt", delim = "\t", col_names = TRUE)
 #temp_U2A <- temp_U2A[-c(1:2), ]
 temp_U2A <- temp_U2A[, -1]
 temp_U2A <- temp_U2A %>%
@@ -222,6 +317,9 @@ temp_U2A$DateTime <- as.POSIXct(paste(temp_U2A$Date, temp_U2A$Time), format = "%
 temp_U2A_long <- pivot_longer(temp_U2A, cols = starts_with("Depth"), names_to = "Probe_ID", values_to = "Temperature")
 specific_intervals <- temp_U2A_long %>%
   filter(minute(DateTime) == 0)
+temp_U2A_long <- temp_U2A_long %>%
+  mutate(Plot = "U2A")
+
 U2_Temperature <- ggplot(temp_U2A_long, aes(x = DateTime, y = Temperature, color = Probe_ID))+
   #geom_point(size = 0.25)+
   geom_line(size = 1.25)+
@@ -234,7 +332,7 @@ U2_Temperature <- ggsave("U2_Temperature.pdf", width = 200, height = 50, units =
 ```
 # B1A + Time above 60ºC
 ```{r}
-temp_B1A=read_delim("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/Blodgett/Datalogger Temps/B1A.txt", delim = "\t", col_names = TRUE)
+temp_B1A=read_delim("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/Field Experiment/Datalogger Temps/B1A.txt", delim = "\t", col_names = TRUE)
 temp_B1A <- temp_B1A[-c(1:2), ]
 temp_B1A <- temp_B1A[, -1]
 temp_B1A <- temp_B1A %>%
@@ -244,6 +342,9 @@ temp_B1A$DateTime <- as.POSIXct(paste(temp_B1A$Date, temp_B1A$Time), format = "%
 temp_B1A_long <- pivot_longer(temp_B1A, cols = starts_with("Depth"), names_to = "Probe_ID", values_to = "Temperature")
 specific_intervals <- temp_B1A_long %>%
   filter(minute(DateTime) == 0)
+temp_B1A_long <- temp_B1A_long %>%
+  mutate(Plot = "B1A")
+
 B1A_Temperature <- ggplot(temp_B1A_long, aes(x = DateTime, y = Temperature, color = Probe_ID))+
   #geom_point(size = 0.25)+
   geom_line(size = 1.25)+
@@ -271,7 +372,7 @@ B1A_Temperature60 <- ggsave("B1A_Temperature60.pdf", width = 200, height = 120, 
 ```
 # B1B + Time above 60ºC
 ```{r}
-temp_B1B=read_delim("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/Blodgett/Datalogger Temps/B1B.txt", delim = "\t", col_names = TRUE)
+temp_B1B=read_delim("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/Field Experiment/Datalogger Temps/B1B.txt", delim = "\t", col_names = TRUE)
 temp_B1B <- temp_B1B[-c(1:2), ]
 temp_B1B <- temp_B1B[, -1]
 temp_B1B <- temp_B1B %>%
@@ -281,6 +382,9 @@ temp_B1B$DateTime <- as.POSIXct(paste(temp_B1B$Date, temp_B1B$Time), format = "%
 temp_B1B_long <- pivot_longer(temp_B1B, cols = starts_with("Depth"), names_to = "Probe_ID", values_to = "Temperature")
 specific_intervals <- temp_B1B_long %>%
   filter(minute(DateTime) == 0)
+temp_B1B_long <- temp_B1B_long %>%
+  mutate(Plot = "B1B")
+
 B1B_Temperature <- ggplot(temp_B1B_long, aes(x = DateTime, y = Temperature, color = Probe_ID))+
   #geom_point(size = 0.25)+
   geom_line(size = 1.25)+
@@ -308,7 +412,7 @@ B1B_Temperature60 <- ggsave("B1B_Temperature60.pdf", width = 200, height = 120, 
 ```
 # B2A + Time above 60ºC
 ```{r}
-temp_B2A=read_delim("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/Blodgett/Datalogger Temps/B2A.txt", delim = "\t", col_names = TRUE)
+temp_B2A=read_delim("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/Field Experiment/Datalogger Temps/B2A.txt", delim = "\t", col_names = TRUE)
 temp_B2A <- temp_B2A[-c(1:6), ]
 temp_B2A <- temp_B2A[, -1]
 temp_B2A <- temp_B2A %>%
@@ -318,6 +422,9 @@ temp_B2A$DateTime <- as.POSIXct(paste(temp_B2A$Date, temp_B2A$Time), format = "%
 temp_B2A_long <- pivot_longer(temp_B2A, cols = starts_with("Depth"), names_to = "Probe_ID", values_to = "Temperature")
 specific_intervals <- temp_B2A_long %>%
   filter(minute(DateTime) == 0)
+temp_B2A_long <- temp_B2A_long %>%
+  mutate(Plot = "B2A")
+
 B2A_Temperature <- ggplot(temp_B2A_long, aes(x = DateTime, y = Temperature, color = Probe_ID))+
   #geom_point(size = 0.25)+
   geom_line(size = 1.25)+
@@ -347,7 +454,7 @@ B2A_Temperature60 <- ggsave("B2A_Temperature60.pdf", width = 200, height = 120, 
 ```
 # B3B + Time above 60ºC
 ```{r}
-temp_B3B=read_delim("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/Blodgett/Datalogger Temps/B3B.txt", delim = "\t", col_names = TRUE)
+temp_B3B=read_delim("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/Field Experiment/Datalogger Temps/B3B.txt", delim = "\t", col_names = TRUE)
 temp_B3B <- temp_B3B[-c(1:2), ]
 temp_B3B <- temp_B3B[, -1]
 temp_B3B <- temp_B3B %>%
@@ -357,6 +464,9 @@ temp_B3B$DateTime <- as.POSIXct(paste(temp_B3B$Date, temp_B3B$Time), format = "%
 temp_B3B_long <- pivot_longer(temp_B3B, cols = starts_with("Depth"), names_to = "Probe_ID", values_to = "Temperature")
 specific_intervals <- temp_B3B_long %>%
   filter(minute(DateTime) == 0)
+temp_B3B_long <- temp_B3B_long %>%
+  mutate(Plot = "B3B")
+
 B3B_Temperature <- ggplot(temp_B3B_long, aes(x = DateTime, y = Temperature, color = Probe_ID))+
   #geom_point(size = 0.25)+
   geom_line(size = 1.25)+
@@ -384,7 +494,7 @@ B3B_Temperature60 <- ggsave("B3B_Temperature60.pdf", width = 200, height = 120, 
 ```
 # B4A
 ```{r}
-temp_B4A=read_delim("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/Blodgett/Datalogger Temps/U3A.txt", delim = "\t", col_names = TRUE)
+temp_B4A=read_delim("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/Field Experiment/Datalogger Temps/U3A.txt", delim = "\t", col_names = TRUE)
 temp_B4A <- temp_B4A[-c(1:2), ]
 temp_B4A <- temp_B4A[, -1]
 temp_B4A <- temp_B4A %>%
@@ -394,6 +504,9 @@ temp_B4A$DateTime <- as.POSIXct(paste(temp_B4A$Date, temp_B4A$Time), format = "%
 temp_B4A_long <- pivot_longer(temp_B4A, cols = starts_with("Depth"), names_to = "Probe_ID", values_to = "Temperature")
 specific_intervals <- temp_B4A_long %>%
   filter(minute(DateTime) == 0)
+temp_B4A_long <- temp_B4A_long %>%
+  mutate(Plot = "B4A")
+
 B4A_Temperature <- ggplot(temp_B4A_long, aes(x = DateTime, y = Temperature, color = Probe_ID))+
   #geom_point(size = 0.25)+
   geom_line(size = 1.25)+
@@ -405,6 +518,49 @@ B4A_Temperature <- ggplot(temp_B4A_long, aes(x = DateTime, y = Temperature, colo
 B4A_Temperature <- ggsave("B4A_Temperature.pdf", width = 200, height = 50, units = "mm", dpi = 500)
 ```
 
+# ALL TEMPERATURE MEASUREMENTS
+```{r}
+all_temp <- rbind(temp_U1A_long, temp_U2A_long, temp_B1A_long, temp_B1B_long, temp_B2A_long, temp_B3B_long, temp_B4A_long)
+all_temp <- all_temp %>%
+  mutate(Depth = case_when(
+    Probe_ID == "Depth1" ~ "1cm",
+    Probe_ID == "Depth2" ~ "2cm",
+    Probe_ID == "Depth4" ~ "4cm",
+    Probe_ID == "Depth6" ~ "6cm"
+  ))
+all_temp <- all_temp %>%
+  mutate(group = case_when(
+    Plot == "B1A" ~ "line", 
+    Plot == "B1B" ~ "dash", 
+    Plot == "U1A" ~ "line", 
+    Plot == "U2A" ~ "line", 
+    Plot == "B2A" ~ "line", 
+    Plot == "B3B" ~ "line", 
+    Plot == "B4A" ~ "line"))
+
+write.csv(all_temp, file = "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/input data/all_temp.csv", row.names = FALSE, na = "", quote = TRUE)
+
+max_temp <- all_temp %>%
+  group_by(Depth, Plot) %>%
+  dplyr::summarize(max_temp = max(Temperature), .groups = 'drop')
+
+all_temp_max <- all_temp %>%
+  left_join(max_temp, by = c("Depth", "Plot"))
+
+all_temperature <- ggplot(all_temp_max, aes(x = DateTime, y = Temperature, color = Plot, linetype = group)) +
+  geom_line(linewidth = 0.75) +
+  theme_bw() +
+  labs(x="One Minute Intervals",
+       y="Temperature(ºC)",
+       title = "Plot temperature over time") +
+  scale_color_manual(values = temp_plot_colors, limits = temp_plot_order)+
+  scale_linetype_manual(values = c("dashed", "solid")) +
+  facet_wrap(~ Depth)
+
+
+all_temperature <- ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/LineGraph/BurnTemperature.pdf", width = 250, height = 150, units = "mm", dpi = 500)
+
+```
 
 
 
@@ -415,15 +571,15 @@ library(scales)
 precip=read_delim("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/input data/precip_blodgett.txt", delim = "\t", col_names = TRUE)
 
 precip$Date <- as.Date(precip$Date, format = "%m/%d/%Y")
-highlight_dates <- as.Date(c("2021-04-05", "2021-04-18", "2021-04-22", "2021-04-27", "2021-05-08"))
-sample_dates <- as.Date(c("2021-04-05", "2021-04-18", "2021-04-27", "2021-05-08"))
-burn_date <- as.Date(c("2021-04-22"))
+highlight_dates <- as.Date(c("2021-04-05", "2021-04-18", "2021-04-21", "2021-04-27", "2021-05-08", "2021-06-20"))
+sample_dates <- as.Date(c("2021-04-05", "2021-04-18", "2021-04-27", "2021-05-08", "2021-06-20"))
+burn_date <- as.Date(c("2021-04-21"))
 
 ggplot(precip, aes(x = Date, y = Precip_mm, group = 1)) +
   geom_line(color = "royalblue", size = 1) + 
   #geom_point(color = "royalblue") +
-  geom_vline(xintercept = as.numeric(sample_dates), color = "grey40", linetype = "longdash", size = 1.2) +
-  geom_vline(xintercept = as.numeric(burn_date), color = "orange", linetype = "longdash", size = 1.2) +
+  geom_vline(xintercept = as.numeric(sample_dates), color = "grey40", linetype = "dashed", size = 0.8) +
+  geom_vline(xintercept = as.numeric(burn_date), color = "orange", linetype = "dashed", size = 0.8) +
   scale_x_date(
     breaks = highlight_dates,
     labels = date_format("%b %d, %Y")
@@ -437,7 +593,7 @@ ggplot(precip, aes(x = Date, y = Precip_mm, group = 1)) +
     axis.text.x = element_text(angle = 45, hjust = 1)
   )
 
-ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/LineGraph/Precipitation.pdf", width = 200, height = 100, units = "mm", dpi = 500)
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/LineGraph/Precipitation.pdf", width = 250, height = 75, units = "mm", dpi = 500)
 
 ```
 
@@ -498,6 +654,10 @@ b.metadata=b.metadata %>%
   select(-SoilHealthCalculation, -WDRFBuffer, -OrganicNReserve, -OrganicPReserve)
 b.chem.ID=b.metadata %>%
   select(-AltID, -virome, -Disturbance, -Plot, -SubPlot, -Date, -Treatment, -Burn, -Depth, -Timepoint)
+
+b.metadata$Timepoint <- as.factor(b.metadata$Timepoint)
+b.metadata$Depth <- as.factor(b.metadata$Depth)
+b.metadata$Disturbance <- as.factor(b.metadata$Disturbance)
 ```
 
 # All plots, before (ab - all before)
@@ -559,6 +719,7 @@ bba.chem.ID=bba.metadata %>%
 # Burn plots, after (d - disturbance)
 ```{r}
 d.metadata <- subset(chem_blodgett, Disturbance=="yes")
+saveRDS(d.metadata, "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/d.metadata.RDS")
 d.chem.ID=d.metadata %>%
   select(-SoilHealthCalculation, -WDRFBuffer, -OrganicNReserve, -OrganicPReserve, -AltID, -virome, -Disturbance, -Plot, -SubPlot, -Date, -Treatment, -Burn, -Depth)
 ```
@@ -988,14 +1149,18 @@ chemical_data <- chemical_data %>%
   mutate(SampleID = ifelse(SampleID == "UDM24D", "UDM24", SampleID))
 colnames(chemical_data)[colnames(chemical_data) == "SampleID"] <- "MapID"
 chemical_data = left_join(p_map, chemical_data, by="MapID")
-chemical_data <- chemical_data[, -c(2:14)]
+chemical_data <- chemical_data[, -c(2:13)]
 
 # Check that the dataframes have the same row names
 identical(chemical_data$ID, microbiome_data$ID)
 
 # Remove ID columns
 microbiome_data <- microbiome_data %>% select(-ID)
+microbiome_data <- microbiome_data %>%
+  select(Acidobacteriota, Actinobacteriota, Bacteroidota, Chloroflexota, Cyanobacteria, Firmicutes, Gemmatimonadota, Myxococcota, Nitrospirota, Planctomycetota, Proteobacteria, Verrucomicrobiota)
 chemical_data <- chemical_data %>% select(-ID)
+chemical_data <- chemical_data %>%
+  select(Moisture, SoilpH, OrganicMatter, InorganicNitrogen, OrganicNInorganicN, InorganicPhosphorus, OrganicPhosphorus, Calcium, Magnesium, Potassium)
 
 
 # Compute the correlation matrix
@@ -1003,8 +1168,8 @@ cor_matrix <- rcorr(as.matrix(microbiome_data), as.matrix(chemical_data))
 cor_values <- cor_matrix$r
 cor_pvalues <- cor_matrix$P
 
-microbiome_indices <- c(1:30)
-chemical_indices <- c(31:59)
+microbiome_indices <- c(1:12)
+chemical_indices <- c(13:22)
 cor_values_subset <- cor_values[microbiome_indices, chemical_indices]
 cor_pvalues_subset <- cor_pvalues[microbiome_indices, chemical_indices]
 sig_matrix <- ifelse(cor_pvalues_subset < 0.05, "*", "")
@@ -1018,13 +1183,65 @@ p <- pheatmap(cor_values_subset,
    clustering_method = "complete",
    main = "Correlation Heatmap of Microbiome and Chemical Properties",
    color = colorRampPalette(rev(brewer.pal(n = 7, name = "RdYlBu")))(100),
-  display_numbers = sig_matrix)
+  display_numbers = sig_matrix, number_size = 24)
 
-ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/HeatMap_Dendrogram/correlation_heatmap.pdf",
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/HeatMap_Dendrogram/microbiome_correlation_heatmap.pdf",
        plot = p$gtable, width = 10, height = 8)
+```
+
+# Correlation between viruses (with host prediction) and chemical properties
+```{r}
+
+p.otu.phylum.map <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/p.otu.phylum.map.rds")
+virome_data=p.otu.phylum.map%>%
+  select(ID, HostPhylum, RelAbd)
+virome_data <- virome_data %>%
+  pivot_wider(names_from = HostPhylum, values_from = RelAbd)
+virome_data <- as.data.frame(virome_data)
+
+p.map <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/p.map.RDS")
+  
+chemical_data <- b.chem.ID
+colnames(chemical_data)[colnames(chemical_data) == "SampleID"] <- "ID"
+chemical_data = left_join(p.map, chemical_data, by="ID")
+chemical_data <- chemical_data[, -c(2:13)]
+
+# Check that the dataframes have the same row names
+identical(chemical_data$ID, virome_data$ID)
+
+# Remove ID columns
+virome_data <- virome_data %>% select(-ID)
+virome_data <- virome_data %>%
+  select(Acidobacteriota, Actinobacteriota, Bacteroidota, Chloroflexota, Cyanobacteria, Firmicutes, Gemmatimonadota, Myxococcota, Nitrospirota, Planctomycetota, Proteobacteria, Verrucomicrobiota)
+chemical_data <- chemical_data %>% select(-ID)
+chemical_data <- chemical_data %>%
+  select(Moisture, SoilpH, OrganicMatter, InorganicNitrogen, OrganicNInorganicN, InorganicPhosphorus, OrganicPhosphorus, Calcium, Magnesium, Potassium)
 
 
-display.brewer.all()
+# Compute the correlation matrix
+cor_matrix <- rcorr(as.matrix(virome_data), as.matrix(chemical_data))
+cor_values <- cor_matrix$r
+cor_pvalues <- cor_matrix$P
+
+virome_indices <- c(1:12)
+chemical_indices <- c(13:22)
+cor_values_subset <- cor_values[virome_indices, chemical_indices]
+cor_pvalues_subset <- cor_pvalues[virome_indices, chemical_indices]
+sig_matrix <- ifelse(cor_pvalues_subset < 0.05, "*", "")
+
+# Create a combined data frame with correlations and p-values
+cor_values[is.na(cor_values_subset)] <- 0  # Replace NA correlations with 0 for visualization
+
+v <- pheatmap(cor_values_subset,
+   clustering_distance_rows = "euclidean",
+   clustering_distance_cols = "euclidean",
+   clustering_method = "complete",
+   main = "Correlation Heatmap of Virome Host Prediction and Chemical Properties",
+   color = colorRampPalette(rev(brewer.pal(n = 7, name = "RdYlBu")))(100),
+  display_numbers = sig_matrix, number_size = 24)
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/HeatMap_Dendrogram/virome_correlation_heatmap.pdf",
+       plot = v$gtable, width = 10, height = 8)
 ```
 
 # ENVIRONMENTAL PCA
@@ -1998,6 +2215,16 @@ ggsave("b_k_disturbance_pca.pdf", width = 200, height = 125, units = "mm", dpi =
 
 
 # INDIVIDUAL VARIABLES - BOX PLOTS
+# linear mixed effects model
+```{r}
+library(lme4)
+model <- lmer(SoilpH ~ Timepoint * Depth * Disturbance + (1 | Plot/SubPlot), data = b.metadata)
+summary(model)
+
+library(emmeans)
+emmeans(model, pairwise ~ Timepoint * Depth * Disturbance)
+```
+
 # Soil Moisture
 ```{r}
 moisture <- ggplot(b.metadata, aes(x = Timepoint, y = Moisture, fill = Treatment)) +
@@ -2021,178 +2248,302 @@ moisture + theme(strip.text = element_text(size=16))
 ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/SingleEnvironmental/blodgett_moisture.pdf", width = 150, height = 100, units = "mm", dpi = 500)
 
 # STATS!!!
-yields.stats <- dnayields
-yields_03_burn <- yields.stats %>%
-  filter(Depth == "0-3cm"&Treatment == "Prescribed_Burn")
-kruskal.test(DNA ~ Burn, yields_03_burn)
+b.metadata$Treatment <- factor(b.metadata$Treatment)
+b.metadata$Treatment <- relevel(b.metadata$Treatment, ref = "Control")
+intrxn <- lm(Moisture ~ Timepoint * Depth * Disturbance, data = b.metadata)
+summary(intrxn)
+
+moisture.stats <- b.metadata
+moisture_03_burn <- moisture.stats %>%
+  filter(Depth == "0-3cm"&Treatment == "Burn")
+kruskal.test(Moisture ~ Timepoint, moisture_03_burn)
+wilcox <- pairwise_wilcox_test(
+  data = moisture_03_burn,
+  formula = Moisture ~ Timepoint,
+  p.adjust.method = "bonferroni")
+
 
 ```
 
 # pH
 ```{r}
-ggplot(b.metadata, aes(x = factor(Date, level=c("4/5/2021", "4/18/2021", "4/27/2021", "5/8/2021", "6/20/2021")), y = SoilpH, fill = factor(Depth, level=c("0-3cm", "3-6cm")), )) +
+pH <- ggplot(b.metadata, aes(x = Timepoint, y = SoilpH, fill = Treatment)) +
   annotate('rect', xmin = -Inf, xmax = 2.5, ymin = -Inf, ymax = Inf, fill = 'lightgreen', alpha = 0.5) +
   geom_boxplot(outlier.shape=NA) +
-  xlab("Date") +
-  ylab("1:1 Soil pH") +
+  xlab("Timepoint") +
+  ylab("Soil pH") +
   theme_bw() +
-  geom_point(position=position_jitterdodge()) +
-  theme(axis.title = element_text(size = 12)) +
+  geom_jitter(aes(color = Depth), position = position_jitter(), size = 1.5) +
+  theme(axis.title = element_text(size = 16)) +
   theme(legend.position = "none") +
-  theme(legend.text = element_text(size = 15)) +
-  theme(axis.text = element_text(size = 12)) +
-  theme(axis.text.x = element_text(size = 12)) +
-  scale_fill_manual(name = "Depth", 
-                    values = c("brown", "darkorange")) +
-  facet_wrap(~ Treatment)
+  theme(legend.text = element_text(size = 16)) +
+  theme(axis.text = element_text(size = 16)) +
+  theme(axis.text.x = element_text(size = 16)) +
+  scale_fill_manual(name = "Treatment", 
+                    values = treatment_colors) +
+  scale_color_manual(values = depth_colors) +
+  facet_wrap(~ Treatment) + 
+  theme(strip.text = element_text(size=16))
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/SingleEnvironmental/blodgett_pH.pdf", width = 150, height = 100, units = "mm", dpi = 500)
 
-ggsave("blodgett_pH.pdf", width = 250, height = 105, units = "mm", dpi = 500)
+intrxn <- lm(SoilpH ~ Timepoint * Depth * Disturbance, data = b.metadata)
+summary(intrxn)
 ```
 
 # Organic Matter
 ```{r}
-ggplot(b.metadata, aes(x = factor(Date, level=c("4/5/2021", "4/18/2021", "4/27/2021", "5/8/2021", "6/20/2021")), y = OrganicMatter, fill = factor(Depth, level=c("0-3cm", "3-6cm")), )) +
+OM <- ggplot(b.metadata, aes(x = Timepoint, y = OrganicMatter, fill = Treatment)) +
   annotate('rect', xmin = -Inf, xmax = 2.5, ymin = -Inf, ymax = Inf, fill = 'lightgreen', alpha = 0.5) +
   geom_boxplot(outlier.shape=NA) +
-  xlab("Date") +
+  xlab("Timepoint") +
   ylab("Organic Matter (% LOI)") +
   theme_bw() +
-  geom_point(position=position_jitterdodge()) +
-  theme(axis.title = element_text(size = 12)) +
+  geom_jitter(aes(color = Depth), position = position_jitter(), size = 1.5) +
+  theme(axis.title = element_text(size = 16)) +
   theme(legend.position = "none") +
-  theme(legend.text = element_text(size = 15)) +
-  theme(axis.text = element_text(size = 12)) +
-  theme(axis.text.x = element_text(size = 12)) +
-  scale_fill_manual(name = "Depth", 
-                    values = c("brown", "darkorange")) +
-  facet_wrap(~ Treatment)
+  theme(legend.text = element_text(size = 16)) +
+  theme(axis.text = element_text(size = 16)) +
+  theme(axis.text.x = element_text(size = 16)) +
+  scale_fill_manual(name = "Treatment", 
+                    values = treatment_colors) +
+  scale_color_manual(values = depth_colors) +
+  facet_wrap(~ Treatment) + 
+  theme(strip.text = element_text(size=16))
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/SingleEnvironmental/blodgett_OM.pdf", width = 150, height = 100, units = "mm", dpi = 500)
 
-ggsave("blodgett_om.pdf", width = 250, height = 105, units = "mm", dpi = 500)
+intrxn <- lm(OrganicMatter ~ Timepoint * Depth * Disturbance, data = b.metadata)
+summary(intrxn)
 ```
 
-# Organic Matter
+# Inorganic N
 ```{r}
-ggplot(b.metadata, aes(x = factor(Date, level=c("4/5/2021", "4/18/2021", "4/27/2021", "5/8/2021", "6/20/2021")), y = OrganicMatter, fill = factor(Depth, level=c("0-3cm", "3-6cm")), )) +
+InorganicN <- ggplot(b.metadata, aes(x = Timepoint, y = InorganicNitrogen, fill = Treatment)) +
   annotate('rect', xmin = -Inf, xmax = 2.5, ymin = -Inf, ymax = Inf, fill = 'lightgreen', alpha = 0.5) +
   geom_boxplot(outlier.shape=NA) +
-  xlab("Date") +
-  ylab("Organic Matter (% LOI)") +
+  xlab("Timepoint") +
+  ylab("Inorganic Nitrogen (ppm N)") +
   theme_bw() +
-  geom_point(position=position_jitterdodge()) +
-  theme(axis.title = element_text(size = 12)) +
+  geom_jitter(aes(color = Depth), position = position_jitter(), size = 1.5) +
+  theme(axis.title = element_text(size = 16)) +
   theme(legend.position = "none") +
-  theme(legend.text = element_text(size = 15)) +
-  theme(axis.text = element_text(size = 12)) +
-  theme(axis.text.x = element_text(size = 12)) +
-  scale_fill_manual(name = "Depth", 
-                    values = c("brown", "darkorange")) +
-  facet_wrap(~ Treatment)
+  theme(legend.text = element_text(size = 16)) +
+  theme(axis.text = element_text(size = 16)) +
+  theme(axis.text.x = element_text(size = 16)) +
+  scale_fill_manual(name = "Treatment", 
+                    values = treatment_colors) +
+  scale_color_manual(values = depth_colors) +
+  facet_wrap(~ Treatment) + 
+  theme(strip.text = element_text(size=16))
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/SingleEnvironmental/blodgett_InorganicN.pdf", width = 150, height = 100, units = "mm", dpi = 500)
 
-ggsave("blodgett_om.pdf", width = 250, height = 105, units = "mm", dpi = 500)
+intrxn <- lm(InorganicNitrogen ~ Timepoint * Depth * Disturbance, data = b.metadata)
+summary(intrxn)
 ```
 
-# Total N
+# OrganicNInorganicN
 ```{r}
-ggplot(b.metadata, aes(x = factor(Date, level=c("4/5/2021", "4/18/2021", "4/27/2021", "5/8/2021", "6/20/2021")), y = TotalN, fill = factor(Depth, level=c("0-3cm", "3-6cm")), )) +
+ONIN <- ggplot(b.metadata, aes(x = Timepoint, y = OrganicNInorganicN, fill = Treatment)) +
   annotate('rect', xmin = -Inf, xmax = 2.5, ymin = -Inf, ymax = Inf, fill = 'lightgreen', alpha = 0.5) +
   geom_boxplot(outlier.shape=NA) +
-  xlab("Date") +
-  ylab("Total Nitrogen (ppm N)") +
+  xlab("Timepoint") +
+  ylab("Organic N : Inorganic N") +
   theme_bw() +
-  geom_point(position=position_jitterdodge()) +
-  theme(axis.title = element_text(size = 12)) +
+  geom_jitter(aes(color = Depth), position = position_jitter(), size = 1.5) +
+  theme(axis.title = element_text(size = 16)) +
   theme(legend.position = "none") +
-  theme(legend.text = element_text(size = 15)) +
-  theme(axis.text = element_text(size = 12)) +
-  theme(axis.text.x = element_text(size = 12)) +
-  scale_fill_manual(name = "Depth", 
-                    values = c("brown", "darkorange")) +
-  facet_wrap(~ Treatment)
+  theme(legend.text = element_text(size = 16)) +
+  theme(axis.text = element_text(size = 16)) +
+  theme(axis.text.x = element_text(size = 16)) +
+  scale_fill_manual(name = "Treatment", 
+                    values = treatment_colors) +
+  scale_color_manual(values = depth_colors) +
+  facet_wrap(~ Treatment) + 
+  theme(strip.text = element_text(size=16))
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/SingleEnvironmental/blodgett_ONIN.pdf", width = 150, height = 100, units = "mm", dpi = 500)
 
-ggsave("blodgett_totalN.pdf", width = 250, height = 105, units = "mm", dpi = 500)
+intrxn <- lm(OrganicNInorganicN ~ Timepoint * Depth * Disturbance, data = b.metadata)
+summary(intrxn)
+
 ```
 
-# Total P
+# Inorganic Phosphorus
 ```{r}
-ggplot(b.metadata, aes(x = factor(Date, level=c("4/5/2021", "4/18/2021", "4/27/2021", "5/8/2021", "6/20/2021")), y = TotalPhosphorus, fill = factor(Depth, level=c("0-3cm", "3-6cm")), )) +
+InorganicP <- ggplot(b.metadata, aes(x = Timepoint, y = InorganicPhosphorus, fill = Treatment)) +
   annotate('rect', xmin = -Inf, xmax = 2.5, ymin = -Inf, ymax = Inf, fill = 'lightgreen', alpha = 0.5) +
   geom_boxplot(outlier.shape=NA) +
-  xlab("Date") +
-  ylab("Total (ICAP) Phosphorus (ppm P)") +
+  xlab("Timepoint") +
+  ylab("Inorganic (FIA) Phosphorus (ppm P)") +
   theme_bw() +
-  geom_point(position=position_jitterdodge()) +
-  theme(axis.title = element_text(size = 12)) +
+  geom_jitter(aes(color = Depth), position = position_jitter(), size = 1.5) +
+  theme(axis.title = element_text(size = 16)) +
   theme(legend.position = "none") +
-  theme(legend.text = element_text(size = 15)) +
-  theme(axis.text = element_text(size = 12)) +
-  theme(axis.text.x = element_text(size = 12)) +
-  scale_fill_manual(name = "Depth", 
-                    values = c("brown", "darkorange")) +
-  facet_wrap(~ Treatment)
+  theme(legend.text = element_text(size = 16)) +
+  theme(axis.text = element_text(size = 16)) +
+  theme(axis.text.x = element_text(size = 16)) +
+  scale_fill_manual(name = "Treatment", 
+                    values = treatment_colors) +
+  scale_color_manual(values = depth_colors) +
+  facet_wrap(~ Treatment) + 
+  theme(strip.text = element_text(size=16))
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/SingleEnvironmental/blodgett_InorganicP.pdf", width = 150, height = 100, units = "mm", dpi = 500)
 
-ggsave("blodgett_totalP.pdf", width = 250, height = 105, units = "mm", dpi = 500)
+intrxn <- lm(InorganicPhosphorus ~ Timepoint * Depth * Disturbance, data = b.metadata)
+summary(intrxn)
 ```
+
+# Organic Phosphorus
+```{r}
+OrganicP <- ggplot(b.metadata, aes(x = Timepoint, y = OrganicPhosphorus, fill = Treatment)) +
+  annotate('rect', xmin = -Inf, xmax = 2.5, ymin = -Inf, ymax = Inf, fill = 'lightgreen', alpha = 0.5) +
+  geom_boxplot(outlier.shape=NA) +
+  xlab("Timepoint") +
+  ylab("Organic Phosphorus (ppm P)") +
+  theme_bw() +
+  geom_jitter(aes(color = Depth), position = position_jitter(), size = 1.5) +
+  theme(axis.title = element_text(size = 16)) +
+  theme(legend.position = "none") +
+  theme(legend.text = element_text(size = 16)) +
+  theme(axis.text = element_text(size = 16)) +
+  theme(axis.text.x = element_text(size = 16)) +
+  scale_fill_manual(name = "Treatment", 
+                    values = treatment_colors) +
+  scale_color_manual(values = depth_colors) +
+  facet_wrap(~ Treatment) + 
+  theme(strip.text = element_text(size=16))
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/SingleEnvironmental/blodgett_OrganicP.pdf", width = 150, height = 100, units = "mm", dpi = 500)
+
+intrxn <- lm(InorganicPhosphorus ~ Timepoint * Depth * Disturbance, data = b.metadata)
+summary(intrxn)
+```
+
 # Calcium
 ```{r}
-ggplot(b.metadata, aes(x = factor(Date, level=c("4/5/2021", "4/18/2021", "4/27/2021", "5/8/2021", "6/20/2021")), y = Calcium, fill = factor(Depth, level=c("0-3cm", "3-6cm")), )) +
+Calcium <- ggplot(b.metadata, aes(x = Timepoint, y = Calcium, fill = Treatment)) +
   annotate('rect', xmin = -Inf, xmax = 2.5, ymin = -Inf, ymax = Inf, fill = 'lightgreen', alpha = 0.5) +
   geom_boxplot(outlier.shape=NA) +
-  xlab("Date") +
+  xlab("Timepoint") +
   ylab("ICAP Calcium (ppm Ca)") +
   theme_bw() +
-  geom_point(position=position_jitterdodge()) +
-  theme(axis.title = element_text(size = 12)) +
+  geom_jitter(aes(color = Depth), position = position_jitter(), size = 1.5) +
+  theme(axis.title = element_text(size = 16)) +
   theme(legend.position = "none") +
-  theme(legend.text = element_text(size = 15)) +
-  theme(axis.text = element_text(size = 12)) +
-  theme(axis.text.x = element_text(size = 12)) +
-  scale_fill_manual(name = "Depth", 
-                    values = c("brown", "darkorange")) +
-  facet_wrap(~ Treatment)
+  theme(legend.text = element_text(size = 16)) +
+  theme(axis.text = element_text(size = 16)) +
+  theme(axis.text.x = element_text(size = 16)) +
+  scale_fill_manual(name = "Treatment", 
+                    values = treatment_colors) +
+  scale_color_manual(values = depth_colors) +
+  facet_wrap(~ Treatment) + 
+  theme(strip.text = element_text(size=16))
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/SingleEnvironmental/blodgett_Calcium.pdf", width = 150, height = 100, units = "mm", dpi = 500)
 
-ggsave("blodgett_calcium.pdf", width = 250, height = 105, units = "mm", dpi = 500)
+intrxn <- lm(Calcium ~ Timepoint * Depth * Disturbance, data = b.metadata)
+summary(intrxn)
 ```
-# Zinc
+# Magnesium
 ```{r}
-ggplot(b.metadata, aes(x = factor(Date, level=c("4/5/2021", "4/18/2021", "4/27/2021", "5/8/2021", "6/20/2021")), y = Zinc, fill = factor(Depth, level=c("0-3cm", "3-6cm")), )) +
+Magnesium <- ggplot(b.metadata, aes(x = Timepoint, y = Magnesium, fill = Treatment)) +
   annotate('rect', xmin = -Inf, xmax = 2.5, ymin = -Inf, ymax = Inf, fill = 'lightgreen', alpha = 0.5) +
   geom_boxplot(outlier.shape=NA) +
-  xlab("Date") +
-  ylab("ICAP Zinc (ppm Zn)") +
+  xlab("Timepoint") +
+  ylab("ICAP Magnesium (ppm Mg)") +
   theme_bw() +
-  geom_point(position=position_jitterdodge()) +
-  theme(axis.title = element_text(size = 12)) +
+  geom_jitter(aes(color = Depth), position = position_jitter(), size = 1.5) +
+  theme(axis.title = element_text(size = 16)) +
   theme(legend.position = "none") +
-  theme(legend.text = element_text(size = 15)) +
-  theme(axis.text = element_text(size = 12)) +
-  theme(axis.text.x = element_text(size = 12)) +
-  scale_fill_manual(name = "Depth", 
-                    values = c("brown", "darkorange")) +
-  facet_wrap(~ Treatment)
+  theme(legend.text = element_text(size = 16)) +
+  theme(axis.text = element_text(size = 16)) +
+  theme(axis.text.x = element_text(size = 16)) +
+  scale_fill_manual(name = "Treatment", 
+                    values = treatment_colors) +
+  scale_color_manual(values = depth_colors) +
+  facet_wrap(~ Treatment) + 
+  theme(strip.text = element_text(size=16))
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/SingleEnvironmental/blodgett_Magnesium.pdf", width = 150, height = 100, units = "mm", dpi = 500)
 
-ggsave("blodgett_zinc.pdf", width = 250, height = 105, units = "mm", dpi = 500)
+intrxn <- lm(Magnesium ~ Timepoint * Depth * Disturbance, data = b.metadata)
+summary(intrxn)
 ```
 # Potassium
 ```{r}
-ggplot(b.metadata, aes(x = factor(Date, level=c("4/5/2021", "4/18/2021", "4/27/2021", "5/8/2021", "6/20/2021")), y = Potassium, fill = factor(Depth, level=c("0-3cm", "3-6cm")), )) +
+Potassium <- ggplot(b.metadata, aes(x = Timepoint, y = Potassium, fill = Treatment)) +
   annotate('rect', xmin = -Inf, xmax = 2.5, ymin = -Inf, ymax = Inf, fill = 'lightgreen', alpha = 0.5) +
   geom_boxplot(outlier.shape=NA) +
-  xlab("Date") +
+  xlab("Timepoint") +
   ylab("ICAP Potassium (ppm K)") +
   theme_bw() +
-  geom_point(position=position_jitterdodge()) +
-  theme(axis.title = element_text(size = 12)) +
+  geom_jitter(aes(color = Depth), position = position_jitter(), size = 1.5) +
+  theme(axis.title = element_text(size = 16)) +
   theme(legend.position = "none") +
-  theme(legend.text = element_text(size = 15)) +
-  theme(axis.text = element_text(size = 12)) +
-  theme(axis.text.x = element_text(size = 12)) +
-  scale_fill_manual(name = "Depth", 
-                    values = c("brown", "darkorange")) +
-  facet_wrap(~ Treatment)
+  theme(legend.text = element_text(size = 16)) +
+  theme(axis.text = element_text(size = 16)) +
+  theme(axis.text.x = element_text(size = 16)) +
+  scale_fill_manual(name = "Treatment", 
+                    values = treatment_colors) +
+  scale_color_manual(values = depth_colors) +
+  facet_wrap(~ Treatment) + 
+  theme(strip.text = element_text(size=16))
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/SingleEnvironmental/blodgett_Potassium.pdf", width = 150, height = 100, units = "mm", dpi = 500)
 
-ggsave("blodgett_potassium.pdf", width = 250, height = 105, units = "mm", dpi = 500)
+intrxn <- lm(Potassium ~ Timepoint * Depth * Disturbance, data = b.metadata)
+summary(intrxn)
+
+simplified_model <- lm(Potassium ~ Timepoint + Depth + Disturbance, data = b.metadata)
+summary(simplified_model)
+table(b.metadata$Timepoint, b.metadata$Disturbance)
+subset(b.metadata, Timepoint == "T5" & !is.na(Disturbance))
+
+
+adjusted_model <- lm(Potassium ~ Timepoint + Depth + Disturbance +
+                                   Timepoint:Depth +
+                                   Depth:Disturbance,
+                     data = b.metadata)
+summary(adjusted_model)
+
 ```
 # Subset of Variables
+# Burn-Relevant Properties
+```{r}
+Burn_Properties = b.metadata %>%
+  select("SoilpH", "OrganicMatter", "InorganicNitrogen", "OrganicNInorganicN", "InorganicPhosphorus", "OrganicPhosphorus", "Calcium", "Magnesium", "Potassium", "SampleID","Depth","Treatment","Date","Disturbance","Plot", "Timepoint", "virome")
+Burn_Properties_long <- melt(Burn_Properties, id.vars=c("SampleID","Depth","Treatment","Date","Disturbance","Plot", "Timepoint", "virome"), measure.vars=colnames(Burn_Properties)[1:9])
+
+y_axis_labels <- c(
+  "SoilpH" = "pH",
+  "OrganicMatter" = "Organic Matter (% LOI)",
+  "InorganicNitrogen" = "Inorganic Nitrogen (ppm N)",
+  "OrganicNInorganicN" = "Organic N : Inorganic N",
+  "InorganicPhosphorus" = "Inorganic (FIA) Phosphorus (ppm P)",
+  "OrganicPhosphorus" = "Organic Phosphorus (ppm P)",
+  "Calcium" = "ICAP Calcium (ppm Ca)",
+  "Magnesium" = "ICAP Magnesium (ppm Mg)",
+  "Potassium" = "ICAP Potassium (ppm K)")
+
+Burn_Properties_long <- Burn_Properties_long %>%
+  mutate(y_axis_label = y_axis_labels[variable])
+
+ggplot(Burn_Properties_long, aes(x = factor(Timepoint, level=c("T1", "T2", "T3", "T4", "T5")), y = value, fill = Treatment)) + 
+  annotate('rect', xmin = -Inf, xmax = 2.5, ymin = -Inf, ymax = Inf, fill = 'palegreen', alpha = 0.5) +
+  geom_boxplot(outlier.shape=NA) + 
+  xlab("Timepoint") + 
+  theme_bw() + 
+  geom_jitter(aes(color = Depth), position = position_jitter(width = 0.2), size = 1.5) +
+  theme(axis.title = element_text(size = 16)) + 
+  theme(legend.position = "bottom") + 
+  theme(legend.text = element_text(size = 16)) + 
+  theme(axis.text = element_text(size = 16)) + 
+  scale_fill_manual(name = "Treatment", 
+                    values = treatment_colors) +
+    scale_color_manual(name = "Depth", 
+                    values = depth_colors) +
+  facet_wrap(~ variable, scales = "free_y") +
+    theme(strip.text = element_text(size=18)) +
+  ylab(NULL)
+
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/TotalEnvironmental/burnproperties_boxplots.pdf", width = 400, height = 300, units = "mm", dpi = 500)
+```
+
 # Nitrogen
 ```{r}
 install.packages("lme4")

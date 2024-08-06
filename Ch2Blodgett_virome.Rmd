@@ -9,6 +9,7 @@ library(tidyverse)
 library(vegan)
 library(dplyr)
 library(ComplexUpset)
+library(rstatix)
 ```
 # Read Input Files
 ```{r}
@@ -17,6 +18,113 @@ otu.count <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_
 blodgett_data <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/blodgett_all_metadata.RDS")
 
 ```
+# contigs found in only burned forest
+```{r}
+burned.otu <- otu[, blodgett_data$Disturbance=="Yes_Burn"]
+burned.otu <- burned.otu[rowSums(burned.otu != 0) > 0, ]
+burned_contigs <- rownames(burned.otu)
+other.otu <- otu[, blodgett_data$Disturbance!="Yes_Burn"]
+other.otu <- other.otu[rowSums(other.otu != 0) > 0, ]
+other_contigs <- rownames(other.otu)
+burned_contigs <- setdiff(burned_contigs, other_contigs) # 29,196 contigs unique to burned forest samples
+```
+# contigs found in only unburned forest
+```{r}
+unburned.otu <- otu[, blodgett_data$Disturbance=="No"]
+unburned.otu <- unburned.otu[rowSums(unburned.otu != 0) > 0, ]
+unburned_contigs <- rownames(unburned.otu)
+other.otu <- otu[, blodgett_data$Disturbance!="No"]
+other.otu <- other.otu[rowSums(other.otu != 0) > 0, ]
+other_contigs <- rownames(other.otu)
+unburned_contigs <- setdiff(unburned_contigs, other_contigs) # 132,918 contigs unique to unburned forest samples
+```
+# contigs found in only heated forest
+```{r}
+ninety.otu <- otu[, blodgett_data$Disturbance=="Yes_90ºC"]
+ninety.otu <- ninety.otu[rowSums(ninety.otu != 0) > 0, ]
+ninety_contigs <- rownames(ninety.otu)
+other.otu <- otu[, blodgett_data$Disturbance!="Yes_90ºC"]
+other.otu <- other.otu[rowSums(other.otu != 0) > 0, ]
+other_contigs <- rownames(other.otu)
+ninety_contigs <- setdiff(ninety_contigs, other_contigs) # 77 contigs unique to 90C forest samples
+
+sixty.otu <- otu[, blodgett_data$Disturbance=="Yes_60ºC"]
+sixty.otu <- sixty.otu[rowSums(sixty.otu != 0) > 0, ]
+sixty_contigs <- rownames(sixty.otu)
+other.otu <- otu[, blodgett_data$Disturbance!="Yes_60ºC"]
+other.otu <- other.otu[rowSums(other.otu != 0) > 0, ]
+other_contigs <- rownames(other.otu)
+sixty_contigs <- setdiff(sixty_contigs, other_contigs) # 420 contigs unique to 60C forest samples
+
+thirty.otu <- otu[, blodgett_data$Disturbance=="Yes_30ºC"]
+thirty.otu <- thirty.otu[rowSums(thirty.otu != 0) > 0, ]
+thirty_contigs <- rownames(thirty.otu)
+other.otu <- otu[, blodgett_data$Disturbance!="Yes_30ºC"]
+other.otu <- other.otu[rowSums(other.otu != 0) > 0, ]
+other_contigs <- rownames(other.otu)
+thirty_contigs <- setdiff(thirty_contigs, other_contigs) # 128 contigs unique to 30C forest samples
+
+heated.otu <- otu[, blodgett_data$Disturbance %in% c("Yes_30ºC", "Yes_60ºC", "Yes_90ºC")]
+heated.otu <- heated.otu[rowSums(heated.otu != 0) > 0, ]
+heated_contigs <- rownames(heated.otu)
+other.otu <- otu[, !blodgett_data$Disturbance %in% c("Yes_30ºC", "Yes_60ºC", "Yes_90ºC")]
+other.otu <- other.otu[rowSums(other.otu != 0) > 0, ]
+other_contigs <- rownames(other.otu)
+heated_contigs <- setdiff(heated_contigs, other_contigs) 
+heated_contigs <- setdiff(heated_contigs, thirty_contigs)
+heated_contigs <- setdiff(heated_contigs, sixty_contigs)
+heated_contigs <- setdiff(heated_contigs, ninety_contigs) # 153 contigs unique to heated forest samples and found in multiple temperatures
+```
+# contigs found in burned and heated forest
+```{r}
+disturbed.otu <- otu[, blodgett_data$Disturbance %in% c("Yes_30ºC", "Yes_60ºC", "Yes_90ºC", "Yes_Burn")]
+disturbed.otu <- disturbed.otu[rowSums(disturbed.otu != 0) > 0, ]
+disturbed_contigs <- rownames(disturbed.otu)
+other.otu <- otu[, !blodgett_data$Disturbance %in% c("Yes_30ºC", "Yes_60ºC", "Yes_90ºC", "Yes_Burn")]
+other.otu <- other.otu[rowSums(other.otu != 0) > 0, ]
+other_contigs <- rownames(other.otu)
+disturbed_contigs <- setdiff(disturbed_contigs, other_contigs) 
+disturbed_contigs <- setdiff(disturbed_contigs, thirty_contigs)
+disturbed_contigs <- setdiff(disturbed_contigs, sixty_contigs)
+disturbed_contigs <- setdiff(disturbed_contigs, ninety_contigs)
+disturbed_contigs <- setdiff(disturbed_contigs, burned_contigs)
+disturbed_contigs <- setdiff(disturbed_contigs, heated_contigs)# 88 contigs unique to disturbed forest samples and found in multiple disturbed states
+
+overlap.otu <- otu
+overlap.otu <- overlap.otu[rowSums(disturbed.otu != 0) > 0, ]
+overlap_contigs <- rownames(overlap.otu)
+overlap_contigs <- setdiff(overlap_contigs, disturbed_contigs)
+overlap_contigs <- setdiff(overlap_contigs, thirty_contigs)
+overlap_contigs <- setdiff(overlap_contigs, sixty_contigs)
+overlap_contigs <- setdiff(overlap_contigs, ninety_contigs)
+overlap_contigs <- setdiff(overlap_contigs, heated_contigs)
+overlap_contigs <- setdiff(overlap_contigs, burned_contigs)
+overlap_contigs <- setdiff(overlap_contigs, unburned_contigs) # 109,037 contigs unique to blodgett forest samples and found in multiple disturbed and undisturbed states
+```
+# combining contigs to make dataframe
+```{r}
+ninety <- data.frame(vOTU = ninety_contigs) %>%
+  mutate(Habitat = "Forest_Heated90ºC")
+sixty <- data.frame(vOTU = sixty_contigs) %>%
+  mutate(Habitat = "Forest_Heated60ºC")
+thirty <- data.frame(vOTU = thirty_contigs) %>%
+  mutate(Habitat = "Forest_Heated30ºC")
+heated <- data.frame(vOTU = heated_contigs) %>%
+  mutate(Habitat = "Forest_Heated")
+burned <- data.frame(vOTU = burned_contigs) %>%
+  mutate(Habitat = "Forest_Burned")
+disturbed <- data.frame(vOTU = disturbed_contigs) %>%
+  mutate(Habitat = "Forest_Disturbed")
+unburned <- data.frame(vOTU = unburned_contigs) %>%
+  mutate(Habitat = "Forest_Undisturbed")
+forest <- data.frame(vOTU = overlap_contigs) %>%
+  mutate(Habitat = "Forest")
+blodgett <- rbind(ninety, sixty, thirty, heated, burned, disturbed, unburned, forest)
+saveRDS(blodgett, "C:/Users/segeo/Box Sync/EmersonLab/Research/blodgett_contigs_habitat.RDS")
+```
+
+
+
 # DNA Yields
 # DNA Yields without NAs
 ```{r}
@@ -89,11 +197,61 @@ ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/Bo
 # stats on DNA yield 
 # this is where the NA values are replaced with a 0
 na_yields.stats <- na_dnayields
+
+na_yields_burn <- na_yields.stats %>%
+  filter(Treatment == "Prescribed_Burn")
+kruskal.test(DNA_g ~ Date, na_yields_burn)
+wilcox <- pairwise_wilcox_test(
+  data = na_yields_burn,
+  formula = DNA_g ~ Date,
+  p.adjust.method = "bonferroni")
+
+na_yields_control <- na_yields.stats %>%
+  filter(Treatment == "Prescribed_Control")
+kruskal.test(DNA_g ~ Date, na_yields_control)
+wilcox <- pairwise_wilcox_test(
+  data = na_yields_control,
+  formula = DNA_g ~ Date,
+  p.adjust.method = "bonferroni")
+
+na_yields_T1 <- na_yields.stats %>%
+  filter(Date == "T1")
+kruskal.test(DNA_g ~ Treatment, na_yields_T1)
+
+na_yields_T2 <- na_yields.stats %>%
+  filter(Date == "T2")
+kruskal.test(DNA_g ~ Treatment, na_yields_T2)
+
+na_yields_T3 <- na_yields.stats %>%
+  filter(Date == "T3")
+kruskal.test(DNA_g ~ Treatment, na_yields_T3)
+
+na_yields_T4 <- na_yields.stats %>%
+  filter(Date == "T4")
+kruskal.test(DNA_g ~ Treatment, na_yields_T4)
+
+na_yields_T5 <- na_yields.stats %>%
+  filter(Date == "T5")
+kruskal.test(DNA_g ~ Treatment, na_yields_T5)
+```
+
+```{r}
+# this is separating out depth, which I don't think I care about anymore
+# pre vs. post burn
 na_yields_03_burn <- na_yields.stats %>%
   filter(Depth == "0-3cm"&Treatment == "Prescribed_Burn")
-kruskal.test(DNA_g ~ Disturbance, na_yields_03_burn)
+kruskal.test(DNA_g ~ Date, na_yields_03_burn)
+wilcox <- pairwise_wilcox_test(
+  data = na_yields_03_burn,
+  formula = DNA_g ~ Date,
+  p.adjust.method = "bonferroni")
 na_yields_03_control <- na_yields.stats %>%
   filter(Depth == "0-3cm"&Treatment == "Prescribed_Control")
+kruskal.test(DNA_g ~ Date, na_yields_03_control)
+wilcox <- pairwise_wilcox_test(
+  data = na_yields_03_control,
+  formula = DNA_g ~ Date,
+  p.adjust.method = "holm")
 kruskal.test(DNA_g ~ Burn, na_yields_03_control)
 na_yields_36_burn <- na_yields.stats %>%
   filter(Depth == "3-6cm"&Treatment == "Prescribed_Burn")
@@ -101,7 +259,6 @@ kruskal.test(DNA_g ~ Burn, na_yields_36_burn)
 na_yields_36_control <- na_yields.stats %>%
   filter(Depth == "3-6cm"&Treatment == "Prescribed_Control")
 kruskal.test(DNA_g ~ Burn, na_yields_36_control)
-
 na_yields_burn <- na_yields.stats %>%
   filter(Treatment == "Prescribed_Burn")
 kruskal.test(DNA_g ~ Date, na_yields_burn)
@@ -109,7 +266,23 @@ na_yields_control <- na_yields.stats %>%
   filter(Treatment == "Prescribed_Control")
 kruskal.test(DNA_g ~ Date, na_yields_control)
 
+na.49_yields.stats <- na.49_dnayields
+na.49_yields_03_burn <- na.49_yields.stats %>%
+  filter(Depth == "0-3cm"&Treatment == "Prescribed_Burn")
+kruskal.test(DNA_g ~ Disturbance, na.49_yields_03_burn)
+na.49_yields_03_control <- na.49_yields.stats %>%
+  filter(Depth == "0-3cm"&Treatment == "Prescribed_Control")
+kruskal.test(DNA_g ~ Burn, na.49_yields_03_control)
+
+na.49_yields_36_burn <- na.49_yields.stats %>%
+  filter(Depth == "3-6cm"&Treatment == "Prescribed_Burn")
+kruskal.test(DNA_g ~ Burn, na.49_yields_36_burn)
+
+na.49_yields_36_control <- na.49_yields.stats %>%
+  filter(Depth == "3-6cm"&Treatment == "Prescribed_Control")
+kruskal.test(DNA_g ~ Burn, na.49_yields_36_control)
 ```
+
 # DNA Yields with NA replaced with 0.49 ng/g soil
 ```{r}
 # replacing NA with "0.49" - the top of threshold
@@ -138,20 +311,42 @@ ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/Bo
 # stats on DNA yield 
 # this is where the NA values are replaced with a 0.49
 na.49_yields.stats <- na.49_dnayields
-na.49_yields_03_burn <- na.49_yields.stats %>%
-  filter(Depth == "0-3cm"&Treatment == "Prescribed_Burn")
-kruskal.test(DNA_g ~ Disturbance, na.49_yields_03_burn)
-na.49_yields_03_control <- na.49_yields.stats %>%
-  filter(Depth == "0-3cm"&Treatment == "Prescribed_Control")
-kruskal.test(DNA_g ~ Burn, na.49_yields_03_control)
 
-na.49_yields_36_burn <- na.49_yields.stats %>%
-  filter(Depth == "3-6cm"&Treatment == "Prescribed_Burn")
-kruskal.test(DNA_g ~ Burn, na.49_yields_36_burn)
+na.49_yields_burn <- na.49_yields.stats %>%
+  filter(Treatment == "Prescribed_Burn")
+kruskal.test(DNA_g ~ Date, na.49_yields_burn)
+wilcox <- pairwise_wilcox_test(
+  data = na.49_yields_burn,
+  formula = DNA_g ~ Date,
+  p.adjust.method = "bonferroni")
 
-na.49_yields_36_control <- na.49_yields.stats %>%
-  filter(Depth == "3-6cm"&Treatment == "Prescribed_Control")
-kruskal.test(DNA_g ~ Burn, na.49_yields_36_control)
+na.49_yields_control <- na.49_yields.stats %>%
+  filter(Treatment == "Prescribed_Control")
+kruskal.test(DNA_g ~ Date, na.49_yields_control)
+wilcox <- pairwise_wilcox_test(
+  data = na.49_yields_control,
+  formula = DNA_g ~ Date,
+  p.adjust.method = "bonferroni")
+
+na.49_yields_T1 <- na.49_yields.stats %>%
+  filter(Date == "T1")
+kruskal.test(DNA_g ~ Treatment, na.49_yields_T1)
+
+na.49_yields_T2 <- na.49_yields.stats %>%
+  filter(Date == "T2")
+kruskal.test(DNA_g ~ Treatment, na.49_yields_T2)
+
+na.49_yields_T3 <- na.49_yields.stats %>%
+  filter(Date == "T3")
+kruskal.test(DNA_g ~ Treatment, na.49_yields_T3)
+
+na.49_yields_T4 <- na.49_yields.stats %>%
+  filter(Date == "T4")
+kruskal.test(DNA_g ~ Treatment, na.49_yields_T4)
+
+na.49_yields_T5 <- na.49_yields.stats %>%
+  filter(Date == "T5")
+kruskal.test(DNA_g ~ Treatment, na.49_yields_T5)
 ```
 
 # PCoA of Entire Dataset
@@ -187,14 +382,18 @@ adonis.table <- do.call(rbind, adonis.results)
 # Prescribed Burn (2021) (p)
 ```{r}
 p.otu <- otu[, blodgett_data$Treatment=="Prescribed_Burn" | blodgett_data$Treatment=="Prescribed_Control"] %>%
-  rmv_sngl()
+ rmv_sngl()
 p.otu.rel <- relativize(p.otu)
 colSums(p.otu.rel)
 p.map <- subset(blodgett_data, Treatment=="Prescribed_Burn" | blodgett_data$Treatment=="Prescribed_Control")
 richness <- colSums(p.otu.rel > 0)
 p.map$Richness <- richness
 p.count <- otu.count[, blodgett_data$Treatment=="Prescribed_Burn" | blodgett_data$Treatment=="Prescribed_Control"] %>%
-  rmv_sngl()
+ rmv_sngl()
+common_contigs <- intersect(rownames(p.otu), rownames(p.count))
+p.count <- p.count[rownames(p.count) %in% common_contigs, ]
+
+saveRDS(p.map, "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/p.map.RDS")
 
 # make sure IDs are identical in count and metadata tables
 identical(colnames(p.count), p.map$ID)
@@ -257,6 +456,8 @@ colSums(T3d.otu.rel)
 T3d.map <- subset(blodgett_data, Date=="4/27/2021" & blodgett_data$Disturbance=="Yes_Burn")
 T3d.count <- otu.count[, blodgett_data$Date=="4/27/2021" & blodgett_data$Disturbance=="Yes_Burn"] %>%
   rmv_sngl()
+common_contigs <- intersect(rownames(T3d.otu), rownames(T3d.count))
+T3d.count <- T3d.count[rownames(T3d.count) %in% common_contigs, ]
 
 
 # Prescribed Burn (2021) - T4
@@ -276,7 +477,8 @@ colSums(T4d.otu.rel)
 T4d.map <- subset(blodgett_data, Date=="5/8/2021" & blodgett_data$Disturbance=="Yes_Burn")
 T4d.count <- otu.count[, blodgett_data$Date=="5/8/2021" & blodgett_data$Disturbance=="Yes_Burn"] %>%
   rmv_sngl()
-
+common_contigs <- intersect(rownames(T4d.otu), rownames(T4d.count))
+T4d.count <- T4d.count[rownames(T4d.count) %in% common_contigs, ]
 
 # 2021, after burn (all plots)
 ab.otu <- otu[, blodgett_data$Burn=="After"] %>%
@@ -616,6 +818,14 @@ pcoa.plot.plot.disturbance(p.otu.map, x_col = pcoa1, y_col = pcoa2, color_col= P
 
 # run PERMANOVAs
 variables <- c("Disturbance", "Depth", "Date", "Treatment", "Plot")
+adonis2(p.otu.dist ~ p.otu.map$'Disturbance' + p.otu.map$'Plot' + p.otu.map$'Depth' + p.otu.map$'Date', by = "margin")
+adonis2(p.otu.dist ~ p.otu.map$'Disturbance' + p.otu.map$'Plot' + p.otu.map$'Depth' + p.otu.map$'Date')
+adonis2(p.otu.dist ~ p.otu.map$'Plot' + p.otu.map$'Date' + p.otu.map$'Depth' + p.otu.map$'Disturbance')
+adonis2(p.otu.dist ~ p.otu.map$'Disturbance' + p.otu.map$'Depth' + p.otu.map$'Date' + p.otu.map$'Plot')
+
+
+adonis(p.otu.dist ~ p.otu.map$'Plot')
+
 p.adonis.results <- run_adonis(variables, p.otu.dist, p.otu.map)
 p.adonis.table <- do.call(rbind, p.adonis.results)
 
@@ -628,6 +838,11 @@ variance(pxB1xU1.otu.pcoa, 1)
 variance(pxB1xU1.otu.pcoa, 2)
 pcoa.sub.plot.disturbance(pxB1xU1.otu.map, x_col = pcoa1, y_col = pcoa2, color_col= Plot, shape_col = Disturbance, x_label = "PCo1 (5.90% variance explained)", y_label = "PCo2 (5.56% variance explained)", title = "2021 Blodgett Viromes xB1xU1", filename = "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCoA/viromes/2021_blodgett_plot_disturbance_xB1_xU1.pdf")
 # run PERMANOVAs
+
+### I DON'T KNOW WHAT THE BEST ORDER OF VARIABLES I SHOULD DO
+adonis2(pxB1xU1.otu.dist ~ pxB1xU1.otu.map$'Disturbance' + pxB1xU1.otu.map$'Plot' + pxB1xU1.otu.map$'Depth' + pxB1xU1.otu.map$'Date', by = "margin")
+adonis2(pxB1xU1.otu.dist ~ pxB1xU1.otu.map$'Disturbance' + pxB1xU1.otu.map$'Plot' + pxB1xU1.otu.map$'Depth' + pxB1xU1.otu.map$'Date')
+
 variables <- c("Disturbance", "Depth", "Date", "Treatment", "Plot")
 pxB1xU1.adonis.results <- run_adonis(variables, pxB1xU1.otu.dist, pxB1xU1.otu.map)
 pxB1xU1.adonis.table <- do.call(rbind, pxB1xU1.adonis.results)
@@ -1027,6 +1242,16 @@ T2.otu.dist <- distance(T2.otu.rel)
 T2.otu.dis.matrix <- as.matrix(T2.otu.dist)
 saveRDS(T2.otu.dis.matrix, "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/T2.otu.dis.matrix.RDS")
 
+# T3
+T3.otu.dist <- distance(T3.otu.rel)
+T3.otu.dis.matrix <- as.matrix(T3.otu.dist)
+saveRDS(T3.otu.dis.matrix, "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/T3.otu.dis.matrix.RDS")
+
+# T4
+T4.otu.dist <- distance(T4.otu.rel)
+T4.otu.dis.matrix <- as.matrix(T4.otu.dist)
+saveRDS(T4.otu.dis.matrix, "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/T4.otu.dis.matrix.RDS")
+
 ```
 
 # Pairwise Dissimilarity for Depth by Interaction of Treatment and Timepoint
@@ -1051,8 +1276,10 @@ for (subplot in unique(p.map$SubPlot)) {
 dissimilarity_results$FireStatus <- ifelse(dissimilarity_results$TimePoint %in% c("T1", "T2"), "Before", "After")
 interaction.order <- c("Control.Before", "Control.After", "Burn.Before", "Burn.After")
 dissimilarity_results$InteractionOrder <- factor(interaction(dissimilarity_results$Treatment, dissimilarity_results$FireStatus), levels = interaction.order)
+
 ggplot(dissimilarity_results, aes(x = InteractionOrder, y = BrayCurtis, fill = interaction(Treatment, FireStatus))) +
   geom_boxplot() +
+  geom_point() +
   labs(
     x = "Treatment and Fire Status",
     y = "Bray-Curtis Dissimilarity", 
@@ -1062,8 +1289,54 @@ ggplot(dissimilarity_results, aes(x = InteractionOrder, y = BrayCurtis, fill = i
 
 ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/BC_depth.pdf", width = 250, height = 150, units = "mm", dpi = 500)
 
+kruskal_results <- kruskal.test(BrayCurtis ~ interaction(Treatment, FireStatus), data = dissimilarity_results)
+
 anova_results <- aov(BrayCurtis ~ interaction(Treatment, FireStatus), data = dissimilarity_results)
 summary(anova_results)
+```
+
+# Pairwise difference in burn severity in soil profile
+```{r}
+d_pc1
+d.metadata
+# create a dataframe that has ID, depth, PC1 scores, SubPlot, and Date, and if missing - basically combine the above two
+d_profile <- d.metadata %>%
+  select(SampleID, Depth, SubPlot, Date) %>%
+  rename(ID = SampleID)
+d_profile <- left_join(d_profile, d_pc1, by = "ID")
+
+depth_diff <- d_profile %>%
+  pivot_wider(names_from = Depth, values_from = Comp.1)
+depth_diff <- depth_diff %>%
+  select(!ID) %>%
+  select(!Missing)
+
+depth_diff <- depth_diff %>%
+  group_by(SubPlot, Date) %>%
+  summarise(
+    `3-6cm` = max(`3-6cm`, na.rm = TRUE),
+    `0-3cm` = max(`0-3cm`, na.rm = TRUE),
+    .groups = 'drop'
+  )
+
+depth_diff <- depth_diff %>%
+  mutate(diff = `0-3cm` - `3-6cm`) %>%
+  mutate(Timepoint = case_when(
+    Date == "4/27/2021" ~ "T3", 
+    Date == "5/8/2021" ~ "T4", 
+    Date == "6/20/2021" ~ "T5")) %>%
+  mutate(SubPlotDate = paste(SubPlot, "-", Timepoint))
+
+SubPlot_Colors <- c("B1A" = "chocolate2", "B1B" = "chocolate2", "B2A" = "burlywood", "B2B" = "burlywood", "B3A" =  "darkorange4", "B3B" = "darkorange4", "B4A" = "tomato3", "B4B" =  "tomato3")
+
+ggplot(depth_diff, aes(x = SubPlotDate, y = diff, fill = SubPlot)) +
+  geom_bar(stat = "identity") +
+  theme_bw() +
+  labs(x = "SubPlot", y = "Difference (0-3cm - 3-6cm)", title = "Difference in Burn Severity Between Depths") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_manual(values = SubPlot_Colors)
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BarGraph/Burnseverity_depth.pdf", width = 250, height = 150, units = "mm", dpi = 500)
 ```
 
 
@@ -1175,26 +1448,71 @@ ggsave("b.nmds.pdf", width = 200, height = 100, units = "mm", dpi = 500)
 # Richness
 ```{r}
 Richness <- p.map %>%
-  ggplot(aes(x = factor(Date, level = burn_date_order), y = Richness, fill = factor(Depth, level = depth_order))) +
+  ggplot(aes(x = Timepoint, y = Richness, fill = Treatment)) +
   annotate('rect', xmin = -Inf, xmax = 2.5, ymin = -Inf, ymax = Inf, fill = 'palegreen', alpha = 0.5) +
   geom_boxplot(outlier.shape=NA) +
-  geom_point(aes(group = interaction(Depth, Date)),
-             position = position_dodge(width = 0.75),
-             size = 0.5) +
+  geom_jitter(aes(color = Depth), position = position_jitter(), size = 1.5) +
   xlab("Time") +
   ylab("Richness (# of vOTUs)") +
   theme_bw() +
   theme(axis.title = element_text(size = 20)) +
   theme(legend.position = "bottom", legend.text = element_text(size=20), legend.title = element_text(size=20)) +
   theme(axis.text = element_text(size = 16)) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  scale_fill_manual(name = "Depth", 
-                    values = depth_colors) +
+  #theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_manual(name = "Treatment", 
+                    values = treatment_colors) +
+  scale_color_manual(values = depth_colors) +
   facet_wrap(~ Treatment)
 
 Richness + theme(strip.text = element_text(size=14))
-ggsave("Blodgett_Richness.pdf", width = 200, height = 120, units = "mm", dpi = 500)
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/Richness/All_Richness.pdf", width = 200, height = 120, units = "mm", dpi = 500)
 ```
+
+# Richness along burn severity
+```{r}
+model_stats <- d.map.pc1 %>%
+  group_by(Depth) %>%
+  do(model = lm(Richness ~ Comp.1, data = .)) %>%
+  dplyr::summarize(
+    Depth = Depth,
+    Slope = coef(model)["Comp.1"],
+    R_squared = summary(model)$r.squared,
+    P_value = summary(model)$coefficients[2, 4]
+  )
+
+intrxn <- lm(Richness ~ Comp.1 * Depth, data = d.map.pc1)
+summary(intrxn)
+
+
+model_stats <- model_stats %>%
+  mutate(
+    text = paste("Slope:", round(Slope, 2),
+                 "\nR-squared:", round(R_squared, 2),
+                 "\nP-value:", round(P_value, 4))
+  )
+
+
+Richness <- d.map.pc1 %>%
+  ggplot(aes(x = Comp.1, y = Richness)) +
+  geom_jitter(aes(color = Depth), position = position_jitter(), size = 1.5) +
+  geom_smooth(method = "lm", col = "black") +
+  xlab("Burn Severity") +
+  ylab("Richness (# of vOTUs)") +
+  theme_bw() +
+  theme(axis.title = element_text(size = 20)) +
+  theme(legend.position = "bottom", legend.text = element_text(size=20), legend.title = element_text(size=20)) +
+  theme(axis.text = element_text(size = 16)) +
+  scale_color_manual(name = "Depth", 
+                    values = depth_colors)+
+  facet_wrap(~Depth) +
+  theme(strip.text = element_text(size=18))
+
+Richness <- Richness + geom_text(data = model_stats, aes(x = Inf, y = Inf, label = text), 
+            hjust = 1.1, vjust = 1.1, size = 5, color = "black", inherit.aes = FALSE)
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/ScatterPlot/BurnSeverity_Richness.pdf", width = 200, height = 120, units = "mm", dpi = 500)
+```
+
 
 # Identifying Heat Tolerant/Sensitive Contigs in Blodgett Data
 # create heat tolerant dataset (only need to do this once!)
@@ -1619,7 +1937,7 @@ p.otu.rel.phylum <- p.otu.rel.phylum %>% mutate(HostPhylum = ifelse(is.na(HostPh
 p.otu.rel.phylum <- p.otu.rel.phylum %>% select(-OTU) 
 p.otu.phylum.long <- pivot_longer(p.otu.rel.phylum, cols=2:92, names_to = "ID", values_to = "RelAbd")
 p.otu.phylum.stack <- group_by(p.otu.phylum.long, HostPhylum, ID) %>%
-  summarize(RelAbd=sum(RelAbd))
+  dplyr::summarize(RelAbd=sum(RelAbd))
 p.otu.phylum.stack <- p.otu.phylum.stack %>%
   group_by(HostPhylum) %>%
   mutate(NewHostPhylum = ifelse(all(RelAbd < 0.003), 'Other', HostPhylum)) %>%
@@ -1628,6 +1946,9 @@ p.otu.phylum.stack <- p.otu.phylum.stack %>%
 # Prep data frame for plotting
 p.otu.phylum.map <- merge(p.otu.phylum.stack, p.map, by="ID")
 p.otu.phylum.map <- p.otu.phylum.map[p.otu.phylum.map$NewHostPhylum != "Unknown", ]
+saveRDS(p.otu.phylum.map, "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/p.otu.phylum.map.rds")
+
+
 p.otu.phylum.map <- p.otu.phylum.map %>% 
   mutate(Order = case_when(
     Date == "4/5/2021" ~ "T1",
@@ -1642,6 +1963,7 @@ p.otu.phylum.map <- p.otu.phylum.map %>%
   arrange(SubPlotdepth)
 
 unique(p.otu.phylum.map$NewHostPhylum)
+saveRDS(p.otu.phylum.map, "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/p.otu.phylum.map.rds")
 
 
 # Plot
@@ -2065,6 +2387,14 @@ for (col in missing_columns) {
   d.otu.rel.allsamples[[col]] <- NA
 }
 
+# If missing, 1, if not missing, 0
+d_pc1 <- d_pc1 %>%
+  mutate(Missing = ifelse(ID %in% missing_columns, "1", "0"))
+d_pc1$Missing <- as.numeric(d_pc1$Missing)
+
+glm_missing <- glm( Missing ~ Comp.1, data = d_pc1, family = binomial )
+summary(glm_missing)
+
 # without missing columns
 dstats.otu.rel.otu <- d.otu.rel %>%
   rownames_to_column(var = "OTU")
@@ -2120,6 +2450,8 @@ unique(d.otu.phylum.map$NewHostPhylum)
 d.otu.phylum.map <- d.otu.phylum.map %>%
   arrange(Comp.1) %>%
   mutate(rank = dense_rank(Comp.1))
+
+saveRDS(d.otu.phylum.map, "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/d.otu.phylum.map.rds")
 
 # Plot
 hostphylum <- ggplot(d.otu.phylum.map, aes(x=rank, y=RelAbd, fill=NewHostPhylum))+
@@ -2262,6 +2594,12 @@ cor.test(unknown_d$Comp.1, unknown_d$Detected, method = "spearman")
 
 
 average_detection <- mean(unknown_d$Detected, na.rm = TRUE)
+
+glm_missing <- glm( missing ~ PC1, data = df, family = binomial )
+summary(glm_missing)
+
+# Where the column, ‘missing’, in the data.frame ‘df’ can be 0 or 1, or a factor. If you make ‘1’  = Sample is missing, then the coefficient for PC1 (the slope coefficient) will tell you how much an increase in the odds of missingness for 1 unit increase in the PC1 score. 
+
 ```
 
 # Host Prediction Stats
@@ -2498,6 +2836,14 @@ library(magrittr)
 T3d.pc1 <- semi_join(d_pc1, T3d.map, by = "ID")
 T3d.otu.da <- T3d.count
 T3d.otu.da <- rownames_to_column(T3d.otu.da, var = "vOTU")
+T3d.otu.da <- column_to_rownames(T3d.otu.da, var = "vOTU")
+total_counts <- rowSums(T3d.otu.da)
+top_contigs <- names(sort(total_counts, decreasing = TRUE))[1:5000]
+filtered_T3d.otu.da <- T3d.otu.da[top_contigs, ]
+
+#### THIS DOESN'T FILTER THE TABLE ENOUGH ... what this is doing now is making sure there is at least 1 count of
+#### a vOTU in both replicates of a subplot at a timepoint
+#### I think I need to do something more stringent, I think the vOTUs need to appear in more than one subgroup...
 T3_long <- T3d.otu.da %>%
   pivot_longer(cols=2:16, names_to = "ID", values_to = "Count")
 
@@ -2505,27 +2851,27 @@ subgroup <- blodgett_data %>%
   select(ID, SubPlot, Date)
 
 T3_long <- left_join(T3_long, subgroup, by="ID")
-
-#### THIS DOESN'T FILTER THE TABLE ENOUGH ... what this is doing now is making sure there is at least 1 count of
-#### a vOTU in both replicates of a subplot at a timepoint
-#### I think I need to do something more stringent, probably with a minimum count of... 10?
-
 filter_contigs <- function(data) {
   data %>%
-    group_by(vOTU, SubPlot, Date) %>%
-    filter(all(Count > 20)) %>%
+    group_by(vOTU, SubPlot) %>%
+    filter(all(Count >= 100)) %>%  # Ensure count is at least 10 in all replicates of each subplot
+    ungroup() %>%
+    group_by(vOTU) %>%
+    filter(n_distinct(SubPlot) > 2) %>%  # Ensure the condition is met in more than 2 subplots
     ungroup()
 }
-
 T3_filtered <- filter_contigs(T3_long)
-
 filtered_abundance_wide <- T3_filtered %>%
   pivot_wider(names_from = ID, values_from = Count) %>%
   select(vOTU, all_of(unique(T3d.map$ID)))
-
 summarized_data <- filtered_abundance_wide %>%
   group_by(vOTU) %>%
   summarize_all(sum, na.rm = TRUE)
+summarized_data <- column_to_rownames(summarized_data, var = "vOTU")
+### But I don't really have replicates...each sample is distinct...so this doesn't really work...
+
+
+
 
 #make sure Comp.1 is numeric
 T3d.pc1 <- as.data.frame(T3d.pc1)
@@ -2537,13 +2883,17 @@ T3d_da_analysis <- differentialTest(formula = ~ Comp.1,
                                 formula_null = ~ 1,
                                 phi.formula_null = ~ Comp.1,
                                 test = "Wald", boot = FALSE,
-                                data = T3d.otu.da, 
+                                data = filtered_T3d.otu.da, 
                                 sample_data = T3d.pc1, 
                                 taxa_are_rows = TRUE, 
                                 fdr_cutoff = 0.05)
 T3d_da_analysis
-T3d_da_analysis$significant_taxa
-plot(T3d_da_analysis)
+significant_taxa <- T3d_da_analysis$significant_taxa
+taxa <- plot(T3d_da_analysis, data_only = TRUE)
+
+
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/corncob/T3.pdf", width = 250, height = 1250, units = "mm", dpi = 500)
 
 # T4, burn samples
 T4d.pc1 <- semi_join(d_pc1, T4d.map, by = "ID")
@@ -2564,17 +2914,11 @@ T4d_da_analysis <- differentialTest(formula = ~ Comp.1,
                                 fdr_cutoff = 0.05)
 T4d_da_analysis
 T4d_da_analysis$significant_taxa
-plot(T4d_da_analysis)
+taxa <- plot(T4d_da_analysis)
 
 # as PC1 increases, these vOTUs are increasing/decreasing
 # post combining - p-value correct 
 
-# Questions to ask Amisha ---
-# Confirm that this will only work on count data
-# Reasonable thresholds for the analysis... 
-  # some ideas... at least 1 in every single sample? 
-  # at least some large amount in at least 8 samples...because this would mean maybe they were all found in the control samples
-  # additional p-value?
 
 
 # correlations between vOTUs and PC1 scores
@@ -2589,6 +2933,28 @@ plot(hist(d_pc1$Comp.1))
 # corect p-values 
 
 ```
+
+```{r}
+contig_list <- as.data.frame(taxa$taxa)
+selected_contigs <- T3d.otu.rel[rownames(T3d.otu.rel) %in% contig_list$`taxa$taxa`, ]
+abundance_long <- selected_contigs %>%
+  rownames_to_column("vOTU") %>%
+  gather(key = "ID", value = "RelAbd", -vOTU)
+merged_data <- merge(abundance_long, T3d.pc1, by.x = "ID", by.y = "ID")
+ordered_data <- merged_data %>%
+  arrange(Comp.1)
+
+ggplot(merged_data, aes(x = Comp.1, y = RelAbd, group = vOTU, color = vOTU)) +
+  geom_line(alpha = 0.3) +
+  labs(title = "Change in Abundance Along Continuous Covariate",
+       x = "Covariate",
+       y = "Abundance") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+
+
 
 # Determining # of unique vOTUs in each depth and in both depths in each plot over time
 ```{r}

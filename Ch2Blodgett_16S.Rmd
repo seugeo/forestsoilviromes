@@ -245,11 +245,7 @@ pc1_asv <- d_pc1 %>%
   mutate(ID = gsub("V", "M", ID)) %>%
   mutate(ID = ifelse(ID == "UDM24D", "UDM24", ID))
 colnames(pc1_asv)[colnames(pc1_asv) == "ID"] <- "MapID"
-bd_map.pc1 = left_join(bd_map, pc1_asv, by="MapID")
-bd_pc1.map = left_join(pc1_asv, bd_map, by="MapID")
 
-#check if samples are identical
-identical(colnames(bd.asv), bd_map.pc1$ID)
 
 #bd.asv.rarecurve <- rarecurve(t(bd.asv), step = 100)
 #x <- map_dfr(bd.asv.rarecurve, bind_rows) %>% bind_cols(colnames(bd.asv),.)
@@ -259,6 +255,56 @@ identical(colnames(bd.asv), bd_map.pc1$ID)
 bd.asv.rare <- t(rrarefy(t(bd.asv), sample = 20100))
 bd.asv.rare <- data.frame(bd.asv.rare) %>%
   rmv_sngl()
+
+richness <- colSums(bd.asv.rare > 0)
+bd_map$Richness <- richness
+bd_map.pc1 = left_join(bd_map, pc1_asv, by="MapID")
+bd_pc1.map = left_join(pc1_asv, bd_map, by="MapID")
+
+#check if samples are identical
+identical(colnames(bd.asv.rare), bd_map.pc1$ID)
+```
+
+# Richness - Burn Severity
+```{r}
+model_stats <- bd_map.pc1 %>%
+  group_by(Depth) %>%
+  do(model = lm(Richness ~ Comp.1, data = .)) %>%
+  dplyr::summarize(
+    Depth = Depth,
+    Slope = coef(model)["Comp.1"],
+    R_squared = summary(model)$r.squared,
+    P_value = summary(model)$coefficients[2, 4]
+  )
+
+model_stats <- model_stats %>%
+  mutate(
+    text = paste("Slope:", round(Slope, 2),
+                 "\nR-squared:", round(R_squared, 2),
+                 "\nP-value:", round(P_value, 4))
+  )
+
+Richness <- bd_map.pc1 %>%
+  ggplot(aes(x = Comp.1, y = Richness)) +
+  geom_jitter(aes(color = Depth), position = position_jitter(), size = 1.5) +
+  geom_smooth(method = "lm", col = "black") +
+  xlab("Burn Severity") +
+  ylab("Richness (# of ASVs)") +
+  theme_bw() +
+  theme(axis.title = element_text(size = 20)) +
+  theme(legend.position = "bottom", legend.text = element_text(size=20), legend.title = element_text(size=20)) +
+  theme(axis.text = element_text(size = 16)) +
+  #annotate("text", x = Inf, y = Inf, label = paste0("p-value = ", format(p_value, scientific = TRUE)), hjust = 2, vjust = 2.5, size = 5) + 
+  #annotate("text", x = Inf, y = Inf, label = sprintf("slope = %.3e", round(slope, 3)), hjust = 2.4, vjust = 3.7, size = 5) + 
+  #theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_color_manual(name = "Depth", 
+                    values = depth_colors)+
+  facet_wrap(~Depth)+ 
+  theme(strip.text = element_text(size=18))
+
+Richness <- Richness + geom_text(data = model_stats, aes(x = Inf, y = Inf, label = text), 
+            hjust = 1, vjust = 1.1, size = 5, color = "black", inherit.aes = FALSE)
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/ScatterPlot/BurnSeverity_ASVRichness.pdf", width = 200, height = 120, units = "mm", dpi = 500)
 ```
 
 # NMDS
