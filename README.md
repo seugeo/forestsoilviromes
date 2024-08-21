@@ -3,4 +3,4 @@ Processed data and code used for Geonczy et al.,
 
 NCBI SRA: PRJNA1113186
 
-Dereplicated vOTU database: https://zenodo.org/records/12562444
+Clustered vOTU database: https://zenodo.org/records/12562444
