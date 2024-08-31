@@ -1,0 +1,1935 @@
+---
+title: "PrescribedBurn_Figures"
+output: html_document
+date: "2024-08-29"
+---
+
+# GENERAL FUNCTIONS
+```{r}
+# CUSTOM COLOR PALETTE & ORDERS
+  treatment_colors <- c("#ff7002", "#92d050")
+  depth_order <- c('0-3cm','3-6cm')
+  depth_colors <- c("brown", "orange")
+  plot_colors <- c("turquoise3","turquoise4", "chocolate2", "burlywood", "darkorange4", "tomato3")
+  plot_order <- c('U1', 'U2', 'B1', 'B2', 'B3', 'B4')
+  p_disturbance_colors <- c("mediumaquamarine", "maroon")
+  p_disturbance_order <- c('no', 'yes')
+  collapsed_phylum_colors <- c("Acidobacteriota" = "#7526C3", "Actinobacteriota" = "#75d644", "Altarchaeota" = "#F9D3D7","Bacteroidota" = "#FAE500", "Bdellovibrionota" = "#0026F9", "Chloroflexota" = "#2665A1", "Cyanobacteria" = "#1CFEDA", "Desulfobacterota" = "#6C328B", "Firmicutes" = "#2ead57", "Gemmatimonadota" = "#84530D", "Halobacteriota" = "#B6EBEF", "Methanobacteriota" = "#CBC279", "Myxococcota" = "#FF942E", "Nitrospirota" = "#909AFE", "Patescibacteria" = "#22CBFD", "Planctomycetota" =  "#fa4668", "Proteobacteria" = "#D78EFC", "Verrucomicrobiota" = "#FE9B95", "Unknown Phylum" = "grey30", "Other" = "darkgray")
+  collapsed_phyla_order <- c("Acidobacteriota", "Actinobacteriota", "Altarchaeota", "Bacteroidota", "Bdellovibrionota", "Chloroflexota", "Cyanobacteria", "Desulfobacterota", "Firmicutes", "Gemmatimonadota", "Halobacteriota", "Methanobacteriota", "Myxococcota", "Nitrospirota", "Patescibacteria", "Planctomycetota", "Proteobacteria", "Verrucomicrobiota", "Unknown Phylum", "Other")
+  temp_plot_colors <- c("turquoise3","turquoise4", "chocolate2", "chocolate2", "burlywood", "darkorange4", "tomato3")
+  temp_plot_order <- c('U1A', 'U2A', 'B1A', 'B1B', 'B2A', 'B3B', 'B4A')
+  
+# Z-TRANSFORMED MATRIX FOR ENVIRONMENTAL DATA
+nutmtx <- function(chem) {
+  nut.mtx <- chem %>%
+    gather(key = "Variable", value = "Value", -SampleID) %>%
+    group_by(Variable) %>%
+    mutate(zValue = (Value - mean(Value))/sd(Value)) %>% 
+    select(SampleID, Variable, zValue) %>% 
+    spread(key = Variable, value = zValue) %>% 
+    as.data.frame()
+row.names(nut.mtx) <- nut.mtx$SampleID
+return(nut.mtx)}
+# REMOVE SINGLETONS (only appears in one sample)
+rmv_sngl <- function(data) {
+  data <- data[rowSums(data>0) >1,]
+  data <- data[, colSums(data)>0]
+return(data)}
+# RELATIVIZE
+relativize <- function(data) {
+  data.rel=decostand(data, method = "total", MARGIN = 2)
+return(data.rel)}
+# CALCULATE DISTANCE MATRIX
+distance <- function(data.rel) {
+  data.dist=vegdist(t(data.rel), method = "bray")
+return(data.dist)}
+# CALCULATE PCOA POINTS
+pcoa <- function(data.dist) {
+  data.pcoa=cmdscale(data.dist, eig = TRUE)
+return(data.pcoa)}
+# CREATE DATA FRAME WITH PCOA POINTS
+pcoa.points <- function(data.pcoa) {
+  data.pcoa.points=data.frame(data.pcoa$points)
+  colnames(data.pcoa.points)=c("pcoa1", "pcoa2")
+return(data.pcoa.points)}
+# JOIN METADATA AND PCOA DATA (vOTUs)
+pcoa.map <- function(data.pcoa.points,map) {
+  data.pcoa.points$ID <- rownames(data.pcoa.points)
+  data.map=left_join(data.pcoa.points,map,by="ID")
+return(data.map)}
+# JOIN METADATA AND PCOA DATA (ASVs)
+pcoa.map.asv <- function(data.pcoa.points,map) {
+  data.pcoa.points$ASV_ID <- rownames(data.pcoa.points)
+  data.map=left_join(data.pcoa.points,map,by="ASV_ID")
+return(data.map)}
+# CALCULATE VARIANCE EXPLAINED
+variance <- function(data.pcoa, x) {
+  data.pcoa$eig[x]/sum(data.pcoa$eig)}
+```
+
+
+
+
+# FIGURE 2
+# Figure 2A - DNA Yield
+# Load Input Data
+```{r}
+otu <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/blodgett_all_otu.RDS")
+blodgett_data <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/blodgett_all_metadata.RDS")
+dnayields <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/blodgett_dnayields.RDS")
+# replacing NA with "0" - the bottom of threshold
+na_dnayields <- dnayields
+na_dnayields$DNA_g[is.na(na_dnayields$DNA_g)] <- 0
+# replacing NA with "0.49" - the top of threshold
+na.49_dnayields <- dnayields
+na.49_dnayields$DNA_g[is.na(na.49_dnayields$DNA_g)] <- 0.49
+```
+# Load Packages
+```{r}
+library(tidyverse)
+library(rstatix)
+```
+# Create Box Plots
+```{r}
+na_DNAyield <- na_dnayields %>%
+  ggplot(aes(x = Date, y = DNA_g, fill = Treatment)) +
+  annotate('rect', xmin = -Inf, xmax = 2.5, ymin = -Inf, ymax = Inf, fill = 'palegreen', alpha = 0.5) +
+  geom_boxplot(outlier.shape=NA) +
+  geom_jitter(aes(color = Depth), position = position_jitter(), size = 1.5) +
+  xlab("Timepoint") +
+  ylab("DNA yield (ng/g soil)") +
+  theme_bw() +
+  theme(axis.title = element_text(size = 16)) +
+  theme(legend.position = "none", legend.text = element_text(size=16), legend.title = element_text(size=16)) +
+  theme(axis.text = element_text(size = 16)) +
+  scale_fill_manual(name = "Treatment", 
+                    values = treatment_colors) +
+  scale_color_manual(values = depth_colors) +
+  facet_wrap(~ Treatment)
+
+na_DNAyield + theme(strip.text = element_text(size=16))
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/DNAyield/Blodgett_0_DNAyield.pdf", width = 150, height = 100, units = "mm", dpi = 500)
+```
+# Statistics
+```{r}
+# this is where the NA values are replaced with a 0
+na_yields.stats <- na_dnayields
+
+na_yields_burn <- na_yields.stats %>%
+  filter(Treatment == "Prescribed_Burn")
+kruskal.test(DNA_g ~ Date, na_yields_burn)
+wilcox <- pairwise_wilcox_test(
+  data = na_yields_burn,
+  formula = DNA_g ~ Date,
+  p.adjust.method = "bonferroni")
+
+na_yields_control <- na_yields.stats %>%
+  filter(Treatment == "Prescribed_Control")
+kruskal.test(DNA_g ~ Date, na_yields_control)
+wilcox <- pairwise_wilcox_test(
+  data = na_yields_control,
+  formula = DNA_g ~ Date,
+  p.adjust.method = "bonferroni")
+
+na_yields_T1 <- na_yields.stats %>%
+  filter(Date == "T1")
+kruskal.test(DNA_g ~ Treatment, na_yields_T1)
+kruskal.test(DNA_g ~ Depth, na_yields_T1)
+
+na_yields_T2 <- na_yields.stats %>%
+  filter(Date == "T2")
+kruskal.test(DNA_g ~ Treatment, na_yields_T2)
+kruskal.test(DNA_g ~ Depth, na_yields_T2)
+
+na_yields_T3 <- na_yields.stats %>%
+  filter(Date == "T3")
+kruskal.test(DNA_g ~ Treatment, na_yields_T3)
+na_yields_T3_burn <- na_yields_T3 %>%
+  filter(Treatment == "Prescribed_Burn")
+kruskal.test(DNA_g ~ Depth, na_yields_T3_burn)
+
+na_yields_T4 <- na_yields.stats %>%
+  filter(Date == "T4")
+kruskal.test(DNA_g ~ Treatment, na_yields_T4)
+kruskal.test(DNA_g ~ Depth, na_yields_T4)
+na_yields_T4_burn <- na_yields_T4 %>%
+  filter(Treatment == "Prescribed_Burn")
+kruskal.test(DNA_g ~ Depth, na_yields_T4_burn)
+
+na_yields_T5 <- na_yields.stats %>%
+  filter(Date == "T5")
+kruskal.test(DNA_g ~ Treatment, na_yields_T5)
+kruskal.test(DNA_g ~ Depth, na_yields_T5)
+
+# this is where the NA values are replaced with a 0.49
+na.49_yields.stats <- na.49_dnayields
+
+na.49_yields_burn <- na.49_yields.stats %>%
+  filter(Treatment == "Prescribed_Burn")
+kruskal.test(DNA_g ~ Date, na.49_yields_burn)
+wilcox <- pairwise_wilcox_test(
+  data = na.49_yields_burn,
+  formula = DNA_g ~ Date,
+  p.adjust.method = "bonferroni")
+
+na.49_yields_control <- na.49_yields.stats %>%
+  filter(Treatment == "Prescribed_Control")
+kruskal.test(DNA_g ~ Date, na.49_yields_control)
+wilcox <- pairwise_wilcox_test(
+  data = na.49_yields_control,
+  formula = DNA_g ~ Date,
+  p.adjust.method = "bonferroni")
+
+na.49_yields_T1 <- na.49_yields.stats %>%
+  filter(Date == "T1")
+kruskal.test(DNA_g ~ Treatment, na.49_yields_T1)
+
+na.49_yields_T2 <- na.49_yields.stats %>%
+  filter(Date == "T2")
+kruskal.test(DNA_g ~ Treatment, na.49_yields_T2)
+
+na.49_yields_T3 <- na.49_yields.stats %>%
+  filter(Date == "T3")
+kruskal.test(DNA_g ~ Treatment, na.49_yields_T3)
+
+na.49_yields_T4 <- na.49_yields.stats %>%
+  filter(Date == "T4")
+kruskal.test(DNA_g ~ Treatment, na.49_yields_T4)
+
+na.49_yields_T5 <- na.49_yields.stats %>%
+  filter(Date == "T5")
+kruskal.test(DNA_g ~ Treatment, na.49_yields_T5)
+```
+
+# Figure 2B - Gravimetric Soil Moisture
+# Load Input Data
+```{r}
+chem_blodgett=read_delim("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/input data/blodgett_env_metadata.csv", delim = ",", col_names = TRUE)
+b.metadata <- chem_blodgett
+b.metadata <- b.metadata %>%
+  mutate(Timepoint = case_when(
+    Date == "4/5/2021" ~ "T1",
+    Date == "4/18/2021" ~ "T2", 
+    Date == "4/27/2021" ~ "T3", 
+    Date == "5/8/2021" ~ "T4",
+    Date == "6/20/2021" ~ "T5"))
+b.metadata=b.metadata %>%
+  select(-SoilHealthCalculation, -WDRFBuffer, -OrganicNReserve, -OrganicPReserve)
+b.chem.ID=b.metadata %>%
+  select(-AltID, -virome, -Disturbance, -Plot, -SubPlot, -Date, -Treatment, -Burn, -Depth, -Timepoint)
+b.metadata$Timepoint <- as.factor(b.metadata$Timepoint)
+b.metadata$Depth <- as.factor(b.metadata$Depth)
+b.metadata$Disturbance <- as.factor(b.metadata$Disturbance)
+```
+# Create Box Plots
+```{r}
+moisture <- ggplot(b.metadata, aes(x = Timepoint, y = Moisture, fill = Treatment)) +
+  annotate('rect', xmin = -Inf, xmax = 2.5, ymin = -Inf, ymax = Inf, fill = 'lightgreen', alpha = 0.5) +
+  geom_boxplot(outlier.shape=NA) +
+  xlab("Timepoint") +
+  ylab("Gravimetric Soil Moisture (%)") +
+  theme_bw() +
+  geom_jitter(aes(color = Depth), position = position_jitter(), size = 1.5) +
+  theme(axis.title = element_text(size = 16)) +
+  theme(legend.position = "none") +
+  theme(legend.text = element_text(size = 16)) +
+  theme(axis.text = element_text(size = 16)) +
+  theme(axis.text.x = element_text(size = 16)) +
+  scale_fill_manual(name = "Treatment", 
+                    values = treatment_colors) +
+  scale_color_manual(values = depth_colors) +
+  facet_wrap(~ Treatment)
+
+moisture + theme(strip.text = element_text(size=16))
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/SingleEnvironmental/blodgett_moisture.pdf", width = 150, height = 100, units = "mm", dpi = 500)
+```
+
+
+# FIGURE 3
+# Figure 3A - PCoA - All Viromes
+# Load Packages
+```{r}
+library(vegan)
+```
+# Load Input Data
+```{r}
+otu <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/blodgett_all_otu.RDS")
+blodgett_data <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/blodgett_all_metadata.RDS")
+p.otu <- otu[, blodgett_data$Treatment=="Prescribed_Burn" | blodgett_data$Treatment=="Prescribed_Control"] %>%
+ rmv_sngl()
+p.otu.rel <- relativize(p.otu)
+colSums(p.otu.rel)
+p.map <- subset(blodgett_data, Treatment=="Prescribed_Burn" | blodgett_data$Treatment=="Prescribed_Control")
+richness <- colSums(p.otu.rel > 0)
+p.map$Richness <- richness
+```
+# Make PCoA Plot
+```{r}
+# Prescribed Burn (2021) Samples Only
+p.otu.dist <- distance(p.otu.rel)
+p.otu.dis.matrix <- as.matrix(p.otu.dist)
+
+p.map <- p.map %>%
+  mutate(Timepoint = case_when(
+    Date == "4/5/2021" ~ "T1",
+    Date == "4/18/2021" ~ "T2", 
+    Date == "4/27/2021" ~ "T3", 
+    Date == "5/8/2021" ~ "T4"))
+p.map <- p.map %>%
+  mutate(Treatment = case_when(
+    Treatment == "Prescribed_Burn" ~ "Burn",
+    Treatment == "Prescribed_Control" ~ "Control"
+  ))
+p.map <- p.map %>%
+  mutate(Disturbance = case_when(
+    Disturbance == "Yes_Burn" ~ "Yes",
+    Disturbance == "No" ~ "No" 
+  ))
+p.otu.pcoa <- pcoa(p.otu.dist)
+p.otu.pcoa.points <- pcoa.points(p.otu.pcoa)
+p.otu.map <- pcoa.map(p.otu.pcoa.points, p.map)
+variance(p.otu.pcoa, 1)
+variance(p.otu.pcoa, 2)
+
+# Plot + Disturbance
+ggplot(p.otu.map, aes(x=pcoa1, y=pcoa2, color=Plot, shape = Disturbance))+
+  geom_point(size = 3) +
+  labs(x = "PCo1 (5.34% Variance Explained)", 
+       y = "PCo2 (4.32% Variance Explained)")+
+  theme(axis.title = element_text(size = 18)) +
+  theme(legend.text = element_text(size = 18), legend.position = "right") +
+  theme(legend.title = element_text(size = 18)) +
+  theme(axis.text = element_text(size = 18)) +
+  scale_color_manual(values=plot_colors, limits=plot_order) +
+  theme(panel.background=element_rect(fill="white"), 
+      panel.grid.major = element_line(color = "lightgrey"), 
+      panel.grid.minor = element_line(color = "lightgrey"))
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCoA/viromes/2021_blodgett_plot_disturbance.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+
+```
+# Statistics
+```{r}
+# PERMANOVAs
+adonis2(p.otu.dist ~ p.otu.map$'Plot' + p.otu.map$'Date' + p.otu.map$'Depth' + p.otu.map$'Disturbance')
+```
+# Figure 3B - PCoA - Subset of Viromes
+# Load Input Data
+```{r}
+# 2021 (all samples except from plot B1 and U1)
+pxB1xU1.otu <- otu[, blodgett_data$Plot!="U1" & blodgett_data$Plot!="B1"] %>%
+  rmv_sngl()
+pxB1xU1.otu.rel <- relativize(pxB1xU1.otu)
+colSums(pxB1xU1.otu.rel)
+pxB1xU1.map <- subset(blodgett_data, Plot!="U1" & Plot != "B1")
+richness <- colSums(pxB1xU1.otu.rel > 0)
+pxB1xU1.map$Richness <- richness
+```
+# Make PCoA Plot
+```{r}
+pxB1xU1.otu.dist <- distance(pxB1xU1.otu.rel)
+pxB1xU1.otu.pcoa <- pcoa(pxB1xU1.otu.dist)
+pxB1xU1.otu.pcoa.points <- pcoa.points(pxB1xU1.otu.pcoa)
+pxB1xU1.otu.map <- pcoa.map(pxB1xU1.otu.pcoa.points, p.map)
+variance(pxB1xU1.otu.pcoa, 1)
+variance(pxB1xU1.otu.pcoa, 2)
+
+# Plot + Disturbance
+ggplot(p.otu.map, aes(x=pcoa1, y=pcoa2, color=Plot, shape = Disturbance))+
+  geom_point(size = 3) +
+  labs(x = "PCo1 (5.90% Variance Explained)", 
+       y = "PCo2 (5.56% Variance Explained)")+
+  theme(axis.title = element_text(size = 18)) +
+  theme(legend.text = element_text(size = 18), legend.position = "right") +
+  theme(legend.title = element_text(size = 18)) +
+  theme(axis.text = element_text(size = 18)) +
+  scale_color_manual(values=plot_colors, limits=plot_order) +
+  theme(panel.background=element_rect(fill="white"), 
+      panel.grid.major = element_line(color = "lightgrey"), 
+      panel.grid.minor = element_line(color = "lightgrey"))
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCoA/viromes/2021_blodgett_plot_disturbance_xB1_xU1.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
+# Statistics
+```{r}
+adonis2(pxB1xU1.otu.dist ~ pxB1xU1.otu.map$'Disturbance' + pxB1xU1.otu.map$'Plot' + pxB1xU1.otu.map$'Depth' + pxB1xU1.otu.map$'Date')
+```
+
+# Figure 3C - UpSet Plot - Detection of vOTUs by Plot
+# Load Packages
+```{r}
+library(ComplexUpset)
+```
+# Make UpSet Plot
+```{r}
+map <- p.map
+B1map <- map %>%
+  filter(Plot=="B1")
+B2map <- map %>%
+  filter(Plot=="B2")
+B3map <- map %>%
+  filter(Plot=="B3")
+B4map <- map %>%
+  filter(Plot=="B4")
+U1map <- map %>%
+  filter(Plot=="U1")
+U2map <- map %>%
+  filter(Plot=="U2")
+p.upset <- p.otu.rel
+B1 <- p.upset[,colnames(p.upset)%in%B1map$ID]
+B2 <- p.upset[,colnames(p.upset)%in%B2map$ID]
+B3 <- p.upset[,colnames(p.upset)%in%B3map$ID]
+B4 <- p.upset[,colnames(p.upset)%in%B4map$ID]
+U1 <- p.upset[,colnames(p.upset)%in%U1map$ID]
+U2 <- p.upset[,colnames(p.upset)%in%U2map$ID]
+B1_pa <- rowSums(B1)>0  
+B2_pa <- rowSums(B2)>0
+B3_pa <- rowSums(B3)>0
+B4_pa <- rowSums(B4)>0
+U1_pa <- rowSums(U1)>0
+U2_pa <- rowSums(U2)>0
+p.plot.upsetdata <- data.frame(B1=B1_pa, B2=B2_pa, B3=B3_pa, B4=B4_pa, U1=U1_pa, U2=U2_pa)
+# plot
+upset(data = p.plot.upsetdata, intersect = c("B4","B3", "B2", "B1", "U2", "U1"), 
+  name="vOTU Detection in Viromes by Plot",
+      base_annotations = list('Intersection size\n(number of vOTUS)'=intersection_size(
+        text=list(hjust=-0.05, vjust=0.5, angle = 90))),
+      min_size = 1000,
+      width_ratio = 0.125,
+      themes=upset_default_themes(text=element_text(size = 14)),
+      sort_sets=FALSE,
+      set_sizes=(upset_set_size()+theme(axis.text.x = element_text(angle=90))),
+      stripes=upset_stripes(colors=c("tomato3", "darkorange4","burlywood","chocolate2", "turquoise4","turquoise3")))
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/Upset/plot_upset.pdf", width = 200, height = 165, units = "mm", dpi = 500)
+```
+
+
+# FIGURE 4
+# Figure 4A - PCA of burn-relevant chemical properties for all samples
+# Load Input Data
+```{r}
+#Environmental distance analysis
+#Remove variables with no variation, z-transform each variable, and format it as a matrix
+b.nut.mtx <- nutmtx(b.chem.ID)
+b.map <- b.metadata[, -c(3:38)]
+b.map = left_join(b.map,b.nut.mtx,by="SampleID")
+b.nut.mtx <- b.nut.mtx[,-1]
+b.nut.mtx <- as.matrix(b.nut.mtx)
+```
+# Make PCA Plot
+```{r}
+pca.b.nut.mtx <- as.data.frame(b.nut.mtx) %>%
+  select(Moisture, SoilpH, OrganicMatter, InorganicNitrogen, OrganicNInorganicN, InorganicPhosphorus, OrganicPhosphorus, Calcium, Magnesium, Potassium)
+pca_fit <- princomp(pca.b.nut.mtx, cor = TRUE)
+scores <- as.data.frame(pca_fit$scores)
+scores$Comp.1 <- -scores$Comp.1
+pca_variance <- pca_fit$sdev^2 / sum(pca_fit$sdev^2)
+b_pca_scores <- scores %>%
+  select(Comp.1, Comp.2)
+b_pca_scores <- rownames_to_column(b_pca_scores, var = "SampleID")
+b_pca_map <- b.metadata %>%
+  select(SampleID, Treatment, Plot, SubPlot, Depth, Date, Burn, Disturbance, virome, Timepoint)
+b_pca_map=left_join(b_pca_map,b_pca_scores,by="SampleID")
+loadings <- as.data.frame(pca_fit$loadings[, 1:2])
+loadings$Comp.1 <- -loadings$Comp.1
+pca_plot <- ggplot(b_pca_map, aes(x = Comp.1, y = Comp.2, color = Disturbance, shape = virome)) +
+  geom_point(size = 3) + # Plot individual samples
+  scale_color_manual(values = p_disturbance_colors, limits = p_disturbance_order) +
+  labs(title = "PCA Plot with Variable Vectors",
+       x = "PCA1, 53.4% Variance Explained",
+       y = "PCA2, 15.5% Variance Explained") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 18),
+    axis.title.x = element_text(size = 18),
+    axis.title.y = element_text(size = 18),
+    axis.text.x = element_text(size = 18),
+    axis.text.y = element_text(size = 18),
+    legend.title = element_text(size = 18),
+    legend.text = element_text(size = 18), 
+    legend.position = "bottom"
+  )
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCA/All_PCA_princomp.pdf", width = 220, height = 150, units = "mm", dpi = 500)
+```
+# Figure 4B - PCA of burn-relevant chemical properties for disturbed samples only
+# Load Input Data
+```{r}
+d.metadata <- subset(chem_blodgett, Disturbance=="yes")
+saveRDS(d.metadata, "C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/d.metadata.RDS")
+d.chem.ID=d.metadata %>%
+  select(-SoilHealthCalculation, -WDRFBuffer, -OrganicNReserve, -OrganicPReserve, -AltID, -virome, -Disturbance, -Plot, -SubPlot, -Date, -Treatment, -Burn, -Depth)
+#Environmental distance analysis
+#Remove variables with no variation, z-transform each variable, and format it as a matrix
+d.nut.mtx <- nutmtx(d.chem.ID)
+d.map <- d.metadata[, -c(3:38)]
+d.map = left_join(d.map,d.nut.mtx,by="SampleID")
+d.nut.mtx <- d.nut.mtx[,-1]
+d.nut.mtx <- as.matrix(d.nut.mtx)
+```
+# Make PCA Plot
+```{r}
+pca.d.nut.mtx <- as.data.frame(d.nut.mtx) %>%
+  select(Moisture, SoilpH, OrganicMatter, InorganicNitrogen, OrganicNInorganicN, InorganicPhosphorus, OrganicPhosphorus, Calcium, Magnesium, Potassium)
+d_pca_fit <- princomp(pca.d.nut.mtx, cor = TRUE)
+scores <- as.data.frame(d_pca_fit$scores)
+scores$Comp.1 <- -scores$Comp.1
+pca_variance <- d_pca_fit$sdev^2 / sum(d_pca_fit$sdev^2)
+d_pca_scores <- scores %>%
+  select(Comp.1, Comp.2)
+d_pca_scores <- rownames_to_column(d_pca_scores, var = "SampleID")
+d_pca_map <- d.metadata %>%
+  select(SampleID, Treatment, Plot, SubPlot, Depth, Date, Burn, Disturbance, virome)
+d_pca_map=left_join(d_pca_map,d_pca_scores,by="SampleID")
+loadings <- as.data.frame(d_pca_fit$loadings[, 1:2])
+loadings$Comp.1 <- -loadings$Comp.1
+pca_plot <- ggplot(d_pca_map, aes(x = Comp.1, y = Comp.2, color = Comp.1)) +
+  geom_point(size = 3) + # Plot individual samples
+  scale_color_gradient(low = "yellow", high = "red") +
+  geom_segment(data = loadings,
+               aes(x = 0, y = 0, xend = Comp.1 * 10, yend = Comp.2 * 10),  # Scale the vectors for better visibility
+               arrow = arrow(length = unit(0.2, "cm")),
+               color = "black", linewidth = 0.5, alpha = 0.25) +
+  geom_text(data = loadings, 
+            aes(x = Comp.1 * 10, y = Comp.2 * 10, label = rownames(loadings)), 
+            vjust = 1.5, color = "black") +
+  theme_minimal() +
+  labs(title = "PCA Plot with Variable Vectors",
+       x = "PCA1, 54.9% Variance Explained",
+       y = "PCA2, 17.5% Variance Explained") +
+  theme(
+    plot.title = element_text(size = 18),
+    axis.title.x = element_text(size = 18),
+    axis.title.y = element_text(size = 18),
+    axis.text.x = element_text(size = 18),
+    axis.text.y = element_text(size = 18),
+    legend.title = element_text(size = 18),
+    legend.text = element_text(size = 18), 
+    legend.position = "bottom"
+  )
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCA/Disturbed_PCA_princomp.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
+
+
+# Figure 4C - Richness (vOTUs)
+# Load Input Data
+```{r}
+d.otu <- otu[, blodgett_data$Disturbance=="Yes_Burn"] %>%
+  rmv_sngl()
+d.otu.rel <- relativize(d.otu)
+colSums(d.otu.rel)
+d.map <- subset(blodgett_data, Disturbance=="Yes_Burn")
+richness <- colSums(d.otu.rel > 0)
+d.map$Richness <- richness
+d_pc1 <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/d_pc1.RDS")
+d.pc1.map = left_join(d_pc1, d.map, by="ID")
+d.map.pc1 = left_join(d.map, d_pc1, by="ID")
+d_pc1 <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/d_pc1.RDS")
+d.pc1.map = left_join(d_pc1, d.map, by="ID")
+d.map.pc1 = left_join(d.map, d_pc1, by="ID")
+```
+# Make Scatter Plot
+```{r}
+model_stats <- d.map.pc1 %>%
+  group_by(Depth) %>%
+  do(model = lm(Richness ~ Comp.1, data = .)) %>%
+  dplyr::summarize(
+    Depth = Depth,
+    Slope = coef(model)["Comp.1"],
+    R_squared = summary(model)$r.squared,
+    P_value = summary(model)$coefficients[2, 4]
+  )
+model_stats <- model_stats %>%
+  mutate(
+    text = paste("Slope:", round(Slope, 2),
+                 "\nR-squared:", round(R_squared, 2),
+                 "\nP-value:", round(P_value, 4))
+  )
+
+Richness <- d.map.pc1 %>%
+  ggplot(aes(x = Comp.1, y = Richness)) +
+  geom_jitter(aes(color = Depth), position = position_jitter(), size = 1.5) +
+  geom_smooth(method = "lm", col = "black") +
+  xlab("Burn Severity") +
+  ylab("Richness (# of vOTUs)") +
+  theme_bw() +
+  theme(axis.title = element_text(size = 20)) +
+  theme(legend.position = "bottom", legend.text = element_text(size=20), legend.title = element_text(size=20)) +
+  theme(axis.text = element_text(size = 16)) +
+  scale_color_manual(name = "Depth", 
+                    values = depth_colors)+
+  facet_wrap(~Depth) +
+  theme(strip.text = element_text(size=18))
+
+Richness <- Richness + geom_text(data = model_stats, aes(x = Inf, y = Inf, label = text), 
+            hjust = 1.1, vjust = 1.1, size = 5, color = "black", inherit.aes = FALSE)
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/ScatterPlot/BurnSeverity_Richness.pdf", width = 200, height = 120, units = "mm", dpi = 500)
+```
+# Figure 4D - Richness (ASVs)
+# Load Input Data
+```{r}
+blodgett.asv <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/blodgett.asv.RDS")
+blodgett_map <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/blodgett_map.RDS")
+asv.filtered <- subset(blodgett.asv, select = -FIRE104)
+blodgett_filtered_map <- blodgett_map[blodgett_map$ID !="FIRE104", ]
+identical(colnames(asv.filtered), blodgett_filtered_map$ID)
+
+p_map <- subset(blodgett_filtered_map, Treatment=="Prescribed_Burn" | blodgett_filtered_map$Treatment=="Prescribed_Control")
+# Edit metadata 
+p_map <- p_map %>% 
+  mutate(TimePoint = case_when(
+    Date == "4/5/2021" ~ "T1",
+    Date == "4/18/2021" ~ "T2", 
+    Date == "4/27/2021" ~ "T3", 
+    Date == "5/8/2021" ~ "T4", 
+    Date == "6/20/2021" ~ "T5")) %>%
+  mutate(TimeSubPlot = paste(TimePoint, "-", SubPlot))
+p.asv <- asv.filtered[, blodgett_filtered_map$Treatment=="Prescribed_Burn" | blodgett_filtered_map$Treatment=="Prescribed_Control"]
+
+bd.asv <- p.asv[,p_map$Disturbance=="Yes_Burn"] %>%
+  rmv_sngl()
+bd_map <- subset(p_map, Disturbance=="Yes_Burn")
+d_pc1 <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/d_pc1.RDS")
+pc1_asv <- d_pc1 %>%
+  mutate(ID = gsub("V", "M", ID)) %>%
+  mutate(ID = ifelse(ID == "UDM24D", "UDM24", ID))
+colnames(pc1_asv)[colnames(pc1_asv) == "ID"] <- "MapID"
+
+#bd.asv.rarecurve <- rarecurve(t(bd.asv), step = 100)
+#x <- map_dfr(bd.asv.rarecurve, bind_rows) %>% bind_cols(colnames(bd.asv),.)
+#x <- as.data.frame(x)
+#row.names(x) <- x[, 1]
+
+bd.asv.rare <- t(rrarefy(t(bd.asv), sample = 20100))
+bd.asv.rare <- data.frame(bd.asv.rare) %>%
+  rmv_sngl()
+
+richness <- colSums(bd.asv.rare > 0)
+bd_map$Richness <- richness
+bd_map.pc1 = left_join(bd_map, pc1_asv, by="MapID")
+bd_pc1.map = left_join(pc1_asv, bd_map, by="MapID")
+
+#check if samples are identical
+identical(colnames(bd.asv.rare), bd_map.pc1$ID)
+```
+# Make Scatter Plot
+```{r}
+model_stats <- bd_map.pc1 %>%
+  group_by(Depth) %>%
+  do(model = lm(Richness ~ Comp.1, data = .)) %>%
+  dplyr::summarize(
+    Depth = Depth,
+    Slope = coef(model)["Comp.1"],
+    R_squared = summary(model)$r.squared,
+    P_value = summary(model)$coefficients[2, 4]
+  )
+model_stats <- model_stats %>%
+  mutate(
+    text = paste("Slope:", round(Slope, 2),
+                 "\nR-squared:", round(R_squared, 2),
+                 "\nP-value:", round(P_value, 4))
+  )
+
+Richness <- bd_map.pc1 %>%
+  ggplot(aes(x = Comp.1, y = Richness)) +
+  geom_jitter(aes(color = Depth), position = position_jitter(), size = 1.5) +
+  geom_smooth(method = "lm", col = "black") +
+  xlab("Burn Severity") +
+  ylab("Richness (# of ASVs)") +
+  theme_bw() +
+  theme(axis.title = element_text(size = 20)) +
+  theme(legend.position = "bottom", legend.text = element_text(size=20), legend.title = element_text(size=20)) +
+  theme(axis.text = element_text(size = 16)) +
+  #annotate("text", x = Inf, y = Inf, label = paste0("p-value = ", format(p_value, scientific = TRUE)), hjust = 2, vjust = 2.5, size = 5) + 
+  #annotate("text", x = Inf, y = Inf, label = sprintf("slope = %.3e", round(slope, 3)), hjust = 2.4, vjust = 3.7, size = 5) + 
+  #theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_color_manual(name = "Depth", 
+                    values = depth_colors)+
+  facet_wrap(~Depth)+ 
+  theme(strip.text = element_text(size=18))
+
+Richness <- Richness + geom_text(data = model_stats, aes(x = Inf, y = Inf, label = text), 
+            hjust = 1, vjust = 1.1, size = 5, color = "black", inherit.aes = FALSE)
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/ScatterPlot/BurnSeverity_ASVRichness.pdf", width = 200, height = 120, units = "mm", dpi = 500)
+```
+# Figure 4E - PCoA of disturbed viromes colored by burn severity
+# Load Input Data
+```{r}
+d.otu.dist <- distance(d.otu.rel)
+d.otu.pcoa <- pcoa(d.otu.dist)
+d.otu.pcoa.points <- pcoa.points(d.otu.pcoa)
+d.otu.map <- pcoa.map(d.otu.pcoa.points, blodgett_data)
+variance(d.otu.pcoa, 1)
+variance(d.otu.pcoa, 2)
+d.otu.map.pc1 <- pcoa.map(d.otu.pcoa.points, d.map.pc1)
+```
+# Plot PCoA
+```{r}
+ggplot(d.otu.map.pc1, aes(x=pcoa1, y=pcoa2, color=Comp.1))+
+  geom_point(size = 3) +
+  scale_color_gradient(low = "yellow", high = "red") +
+  labs(x = "PCo1 (12.87% variance explained)", 
+       y = "PCo2 (10.3% variance explained)",
+       title = "All Disturbed Samples")+
+  theme(axis.title = element_text(size = 18)) +
+  theme(legend.text = element_text(size = 18), legend.position = "none") +
+  theme(legend.title = element_text(size = 18)) +
+  theme(axis.text = element_text(size = 18)) +
+  theme(panel.background=element_rect(fill="white"), 
+      panel.grid.major = element_line(color = "lightgrey"), 
+      panel.grid.minor = element_line(color = "lightgrey"))
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCoA/viromes/Disturbed_PCoA_PC1.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
+# Statistics
+```{r}
+Comp.1 <- d.map.pc1$Comp.1
+Comp.1.dist <- dist(Comp.1)
+mantel_test <- mantel(d.otu.dist, Comp.1.dist)
+mantel_test
+```
+
+# Figure 4F -PCoA of disturbed prokaryote samples colored by burn severity
+# Load Input Data
+```{r}
+#bray-curtis dissimilarity distance matrix 
+bd.asv.dist=vegdist(t(bd.asv.rare), method = "bray")
+bd.asv.pcoa <- pcoa(bd.asv.dist)
+bd.asv.pcoa.points <- pcoa.points(bd.asv.pcoa)
+bd.asv.pcoa.points <- rownames_to_column(bd.asv.pcoa.points, var ="ID")
+bd.asv.map=left_join(bd.asv.pcoa.points,bd_map.pc1,by="ID")
+variance(bd.asv.pcoa, 1)
+variance(bd.asv.pcoa, 2)
+```
+# Plot PCoA
+```{r}
+ggplot(bd.asv.map, aes(x=pcoa1, y=pcoa2, color=Comp.1))+
+  geom_point(size = 3) +
+  scale_color_gradient(low = "yellow", high = "red") +
+  labs(x = "PCo1 (28.26% variance explained)", 
+       y = "PCo2 (16.68% variance explained)",
+       title = "Burn Plots, Disturbed Samples - ASV with PC1 gradient")+
+  theme(axis.title = element_text(size = 18)) +
+  theme(legend.text = element_text(size = 18), legend.position = "right") +
+  theme(legend.title = element_text(size = 18)) +
+  theme(axis.text = element_text(size = 18)) +
+  theme(panel.background=element_rect(fill="white"), 
+      panel.grid.major = element_line(color = "lightgrey"), 
+      panel.grid.minor = element_line(color = "lightgrey"))
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCoA/prokaryotes/Burn_Disturbed_PC1_PCOA.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
+# Statistics
+```{r}
+Comp.1 <- bd.asv.map$Comp.1
+Comp.1.dist <- dist(Comp.1)
+mantel_test <- mantel(bd.asv.dist, Comp.1.dist)
+mantel_test
+```
+
+
+# FIGURE 5
+# Figure 5A - Phylum-level 16S rRNA gene ASV profile by Sample
+# Load Input Data
+```{r}
+tax_filtered <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/tax_filtered.RDS")
+
+
+# add in missing columns
+mapping <- setNames(bd_map$MapID, bd_map$ID)
+mapping
+colnames(bd.asv.rare) <- mapping[colnames(bd.asv.rare)]
+missing_columns <- setdiff(pc1_asv$MapID, colnames(bd.asv.rare))
+missing_columns
+bd.asv.rare.allsamples <- bd.asv.rare
+for (col in missing_columns) {
+  bd.asv.rare.allsamples[[col]] <- NA
+}
+
+
+# first, add OTU_ID back as a column
+bd.id.asv <- bd.asv.rare.allsamples
+bd.id.asv$OTU_ID <- rownames(bd.id.asv)
+tax_bd <- left_join(bd.id.asv, tax_filtered, by = "OTU_ID")
+# make sure blodgett.asv is in the same order as tax_blodgett (return = TRUE)
+check_column <- "OTU_ID"
+all(bd.id.asv[[check_column]] == tax_bd[[check_column]])
+unique(tax_bd$Phylum)
+colSums(tax_bd[, 1:48])
+
+# pivot table and group by Phylum
+tax_bd.long <- pivot_longer(tax_bd, cols=1:48, names_to = "MapID", values_to = "counts")
+bd.phylum.long <- group_by(tax_bd.long, Phylum, MapID) %>%
+  dplyr::summarize(counts=sum(counts))
+unique(bd.phylum.long$Phylum)
+
+# rarefied to 20100
+# collapse phyla into "other" category if represents less than 2%, which is 402
+bd.phylum.long$Phylum <- as.character(bd.phylum.long$Phylum)
+bd.phylum.long <- bd.phylum.long %>%
+  group_by(Phylum) %>%
+  mutate(NewPhylum = ifelse(all(na.omit(counts) < 402), 'Other', Phylum)) %>%
+  ungroup()
+unique(bd.phylum.long$NewPhylum)
+
+# Prep data frame for plotting
+bd.phylum.map <- merge(bd.phylum.long, bd_pc1.map, by="MapID")
+
+# Arrange samples by Comp.1
+bd.phylum.map <- bd.phylum.map %>%
+  arrange(Comp.1) %>%
+  mutate(rank = dense_rank(Comp.1))
+
+unique(bd.phylum.map$NewPhylum)
+```
+# Make Stacked Bar Plot
+```{r}
+# Plot (I believe this would be every single sample)
+bd_phylum <- ggplot(bd.phylum.map, aes(x=rank, y=counts, fill=NewPhylum))+
+    labs(x="Burn Severity Ranking", 
+       y ="Relative Abundance",
+       title = "Burn Plots, Disturbed Samples, PC1, 16S rRNA ASV Profile")+
+  geom_bar(stat="identity", position = "fill", width = 0.75)+
+  #geom_vline(xintercept = c(8.5, 16.5, 24.5, 32.5), linetype = "solid", color = "black", size = 0.75)+
+  scale_fill_manual(values=collapsed_phylum_colors) +
+  geom_vline(xintercept = c(0.5,1.5,2.5,3.5,4.5,5.5,6.5,7.5,8.5,9.5,10.5,11.5,12.5,13.5,14.5,15.5,16.5,17.5,18.5,19.5,20.5,21.5,22.5,23.5,24.5,25.5,26.5,27.5,28.5,29.5,30.5,31.5,32.5,33.5,34.5,35.5,36.5,37.5,38.5,39.5,40.5, 41.5,42.5,43.5,44.5,45.5,46.5, 47.5, 48.5), linetype = "solid", color = "grey20", linewidth = 0.15)+
+  scale_x_continuous(limits = c(0.5,48.5), expand = c(0,0))+
+  theme(
+    panel.grid.major = element_blank(),  # Remove major grid lines
+    panel.grid.minor = element_blank(),  # Remove minor grid lines
+    panel.background = element_blank()
+  ) +
+  labs(fill = "Phylum") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, size = 12),
+        axis.text.y = element_text(size = 12),
+        legend.position = "bottom")+
+    theme(axis.title = element_text(size = 18))
+
+bd_phylum
+bd_phylum <- ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/StackedBar/ASVPhylum/bd_phylum_PC1.pdf", width = 250, height = 150, units = "mm", dpi = 500)
+```
+# Statistics
+```{r}
+bd.stats <- bd.phylum.map
+acido_bd <- bd.stats %>%
+  filter(Phylum == "Acidobacteriota")
+ggplot(acido_bd, aes(x = Comp.1, y = counts)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Counts of Acidobacteriota") +
+  theme_minimal()
+cor.test(acido_bd$Comp.1, acido_bd$counts, method = "spearman")
+
+actino_bd <- bd.stats %>%
+  filter(Phylum == "Actinobacteriota")
+ggplot(actino_bd, aes(x = Comp.1, y = counts)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Counts of Actinobacteriota") +
+  theme_minimal()
+cor.test(actino_bd$Comp.1, actino_bd$counts, method = "spearman")
+
+bact_bd <- bd.stats %>%
+  filter(Phylum == "Bacteroidota")
+ggplot(bact_bd, aes(x = Comp.1, y = counts)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Counts of Bacteroidota") +
+  theme_minimal()
+cor.test(bact_bd$Comp.1, bact_bd$counts, method = "spearman")
+
+chloro_bd <- bd.stats %>%
+  filter(Phylum == "Chloroflexota")
+ggplot(chloro_bd, aes(x = Comp.1, y = counts)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Counts of Chloroflexota") +
+  theme_minimal()
+cor.test(chloro_bd$Comp.1, chloro_bd$counts, method = "spearman")
+
+firm_bd <- bd.stats %>%
+  filter(Phylum == "Firmicutes")
+ggplot(firm_bd, aes(x = Comp.1, y = counts)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Counts of Firmicutes") +
+  theme_minimal()
+cor.test(firm_bd$Comp.1, firm_bd$counts, method = "spearman")
+
+gemma_bd <- bd.stats %>%
+  filter(Phylum == "Gemmatimonadota")
+ggplot(gemma_bd, aes(x = Comp.1, y = counts)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Counts of Gemmatimonadota") +
+  theme_minimal()
+cor.test(gemma_bd$Comp.1, gemma_bd$counts, method = "spearman")
+
+myxo_bd <- bd.stats %>%
+  filter(Phylum == "Myxococcota")
+ggplot(myxo_bd, aes(x = Comp.1, y = counts)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Counts of Myxococcota") +
+  theme_minimal()
+cor.test(myxo_bd$Comp.1, myxo_bd$counts, method = "spearman")
+
+plancto_bd <- bd.stats %>%
+  filter(Phylum == "Planctomycetota")
+ggplot(plancto_bd, aes(x = Comp.1, y = counts)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Counts of Planctomycetota") +
+  theme_minimal()
+cor.test(plancto_bd$Comp.1, plancto_bd$counts, method = "spearman")
+
+proteo_bd <- bd.stats %>%
+  filter(Phylum == "Proteobacteria")
+ggplot(proteo_bd, aes(x = Comp.1, y = counts)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Counts of Proteobacteria") +
+  theme_minimal()
+cor.test(proteo_bd$Comp.1, proteo_bd$counts, method = "spearman")
+
+verru_bd <- bd.stats %>%
+  filter(Phylum == "Verrucomicrobiota")
+ggplot(verru_bd, aes(x = Comp.1, y = counts)) +
+  geom_point() +
+  labs(title = "Scatter Plot",
+       x = "Burn Severity",
+       y = "Counts of Verrucomicrobiota") +
+  theme_minimal()
+cor.test(verru_bd$Comp.1, verru_bd$counts, method = "spearman")
+```
+
+# Figure 5B - Phylum-level vOTU host prediction by Sample
+# Load Input Data
+```{r}
+iphop.phylum <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/iphop_phylum.RDS")
+
+missing_columns <- setdiff(d_pc1$ID, colnames(d.otu.rel))
+missing_columns
+d.otu.rel.allsamples <- d.otu.rel
+for (col in missing_columns) {
+  d.otu.rel.allsamples[[col]] <- NA
+}
+
+# If missing, 1, if not missing, 0
+d_pc1 <- d_pc1 %>%
+  mutate(Missing = ifelse(ID %in% missing_columns, "1", "0"))
+d_pc1$Missing <- as.numeric(d_pc1$Missing)
+
+# name row.names of d.otu.rel
+d.otu.rel.otu <- d.otu.rel.allsamples %>%
+  rownames_to_column(var = "OTU")
+d.otu.rel.phylum <- merge(iphop.phylum, d.otu.rel.otu, by = "OTU", all.y = TRUE)
+
+# replace NA Host Phylum with "unknown"
+d.otu.rel.phylum <- d.otu.rel.phylum %>% mutate(HostPhylum = ifelse(is.na(HostPhylum), "Unknown", HostPhylum))
+# remove OTU column
+d.otu.rel.phylum <- d.otu.rel.phylum %>% select(-OTU) 
+d.otu.phylum.long <- pivot_longer(d.otu.rel.phylum, cols=2:49, names_to = "ID", values_to = "RelAbd")
+d.otu.phylum.stack <- d.otu.phylum.long %>%
+  group_by(HostPhylum, ID) %>%
+  dplyr::summarize(RelAbd=sum(RelAbd))
+d.otu.phylum.stack <- d.otu.phylum.stack %>%
+  group_by(HostPhylum) %>%
+  mutate(NewHostPhylum = ifelse(all(na.omit(RelAbd) < 0.001), 'Other', HostPhylum)) %>%
+  ungroup()
+
+# Prep data frame for plotting
+d.otu.phylum.map <- merge(d.otu.phylum.stack, d.pc1.map, by="ID")
+d.otu.unknown.phylum <- d.otu.phylum.map
+
+d.otu.phylum.map <- d.otu.phylum.map[d.otu.phylum.map$NewHostPhylum != "Unknown", ]
+
+d.otu.phylum.map <- d.otu.phylum.map %>% 
+  mutate(Order = case_when(
+    Date == "4/5/2021" ~ "T1",
+    Date == "4/18/2021" ~ "T2", 
+    Date == "4/27/2021" ~ "T3", 
+    Date == "5/8/2021" ~ "T4")) %>%
+  arrange(Order) %>%
+  mutate(TreatRep = paste(Order, SubPlot, Depth)) %>%
+  arrange(TreatRep)
+
+unique(d.otu.phylum.map$NewHostPhylum)
+
+d.otu.phylum.map <- d.otu.phylum.map %>%
+  arrange(Comp.1) %>%
+  mutate(rank = dense_rank(Comp.1))
+```
+# Make Stacked Bar Plot
+```{r}
+# Plot
+hostphylum <- ggplot(d.otu.phylum.map, aes(x=rank, y=RelAbd, fill=NewHostPhylum))+
+    labs(x="Burn Severity Ranking", 
+       y ="Relative Abundance",
+       title = "Prescribed Burn - Treatment Plots, Disturbed - vOTU Host Prediction by Sample")+
+  geom_bar(stat="identity")+
+  scale_fill_manual(values=collapsed_phylum_colors) +
+  geom_vline(xintercept = c(0.5,1.5,2.5,3.5,4.5,5.5,6.5,7.5,8.5,9.5,10.5,11.5,12.5,13.5,14.5,15.5,16.5,17.5,18.5,19.5,20.5,21.5,22.5,23.5,24.5,25.5,26.5,27.5,28.5,29.5,30.5,31.5,32.5,33.5,34.5,35.5,36.5,37.5,38.5,39.5,40.5, 41.5,42.5,43.5,44.5,45.5, 46.5, 47.5, 48.5), linetype = "solid", color = "grey20", linewidth = 0.15)+
+  theme(
+    panel.grid.major = element_blank(),  # Remove major grid lines
+    panel.grid.minor = element_blank(),  # Remove minor grid lines
+    panel.background = element_blank()
+  ) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, size = 12),
+        axis.text.y = element_text(size = 12),
+        legend.position = "bottom") +
+  scale_x_continuous(limits = c(0.5,48.5), expand = c(0,0))+
+  scale_y_continuous(limits = c(0, 0.5), expand = c(0,0)) +
+  labs(fill = "Host Phylum") +
+  theme(axis.title = element_text(size = 18))
+hostphylum <- ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/StackedBar/HostPhylum/burn_disturbed_PC1_phylum.pdf", width = 250, height = 150, units = "mm", dpi = 500)
+```
+
+
+# SUPPLEMENTARY FIGURE 1
+# Supplementary Figure 1A - Precipitation Trend Over Time
+# Load Packages
+```{r}
+library(scales)
+```
+# Load Input Data
+```{r}
+precip=read_delim("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/input data/precip_blodgett.txt", delim = "\t", col_names = TRUE)
+precip$Date <- as.Date(precip$Date, format = "%m/%d/%Y")
+highlight_dates <- as.Date(c("2021-04-05", "2021-04-18", "2021-04-21", "2021-04-27", "2021-05-08", "2021-06-20"))
+sample_dates <- as.Date(c("2021-04-05", "2021-04-18", "2021-04-27", "2021-05-08", "2021-06-20"))
+burn_date <- as.Date(c("2021-04-21"))
+```
+# Make Line Graph
+```{r}
+ggplot(precip, aes(x = Date, y = Precip_mm, group = 1)) +
+  geom_line(color = "royalblue", size = 1) + 
+  #geom_point(color = "royalblue") +
+  geom_vline(xintercept = as.numeric(sample_dates), color = "grey40", linetype = "dashed", linewidth = 0.8) +
+  geom_vline(xintercept = as.numeric(burn_date), color = "orange", linetype = "dashed", linewidth = 0.8) +
+  scale_x_date(
+    breaks = highlight_dates,
+    labels = date_format("%b %d, %Y")
+  ) +
+  labs(title = "Precipitation Trend Over Time",
+       x = "Date",
+       y = "Precipitation (mm)") +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 12),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/LineGraph/Precipitation.pdf", width = 250, height = 75, units = "mm", dpi = 500)
+```
+# Supplementary Figures 1B-E
+# Load Packages
+```{r}
+library(geosphere)
+```
+# Load Input Data
+```{r}
+blodgett_gps <- chem_blodgett %>%
+  select(SampleID, AltID, virome, Disturbance, Plot, SubPlot, Date, Treatment, Burn, Depth)
+
+blodgett_gps <- blodgett_gps %>%
+  mutate(longitude = case_when(
+    SubPlot == "B1A" ~ "-120.656574", 
+    SubPlot == "B1B" ~ "-120.656476",
+    SubPlot == "B2A" ~ "-120.656264", 
+    SubPlot == "B2B" ~ "-120.656325",
+    SubPlot == "B3A" ~ "-120.656115", 
+    SubPlot == "B3B" ~ "-120.656273",
+    SubPlot == "B4A" ~ "-120.65749", 
+    SubPlot == "B4B" ~ "-120.657476",
+    SubPlot == "U1A" ~ "-120.660711", 
+    SubPlot == "U1B" ~ "-120.660492",
+    SubPlot == "U2A" ~ "-120.658397", 
+    SubPlot == "U2B" ~ "-120.65839"))
+
+blodgett_gps <- blodgett_gps %>%
+  mutate(latitude = case_when(
+    SubPlot == "B1A" ~ "38.917527", 
+    SubPlot == "B1B" ~ "38.917446",
+    SubPlot == "B2A" ~ "38.918787", 
+    SubPlot == "B2B" ~ "38.918829",
+    SubPlot == "B3A" ~ "38.918239", 
+    SubPlot == "B3B" ~ "38.918259",
+    SubPlot == "B4A" ~ "38.915061", 
+    SubPlot == "B4B" ~ "38.915001",
+    SubPlot == "U1A" ~ "38.915042", 
+    SubPlot == "U1B" ~ "38.915097",
+    SubPlot == "U2A" ~ "38.915378", 
+    SubPlot == "U2B" ~ "38.915418"))
+
+blodgett_gps <- blodgett_gps %>%
+  mutate(Timepoint = case_when(
+    Date == "4/5/2021" ~ "T1",
+    Date == "4/18/2021" ~ "T2", 
+    Date == "4/27/2021" ~ "T3", 
+    Date == "5/8/2021" ~ "T4",
+    Date == "6/20/2021" ~ "T5"))
+
+blodgett_gps <- blodgett_gps[!(blodgett_gps$virome=="no"),]
+```
+# Supplementary Figure 1B - Distance Decay - T1
+# Load Input Data
+```{r}
+blodgett_gps_T1 <- blodgett_gps[(blodgett_gps$Timepoint=="T1"),]
+blodgett_gps_T1 <- blodgett_gps_T1 %>%
+  select(SampleID, longitude, latitude)
+blodgett_gps_T1 <- column_to_rownames(blodgett_gps_T1, var = "SampleID")
+blodgett_gps_T1 <- as.data.frame(blodgett_gps_T1)
+blodgett_gps_T1$longitude <- as.numeric(blodgett_gps_T1$longitude)
+blodgett_gps_T1$latitude <- as.numeric(blodgett_gps_T1$latitude)
+T1_dist_matrix_vinellips <- distm(blodgett_gps_T1, fun = distVincentyEllipsoid)
+rownames(T1_dist_matrix_vinellips) <- colnames(T1_dist_matrix_vinellips) <- rownames(blodgett_gps_T1)
+```
+# Make Scatter Plot
+```{r}
+bray_dist_matrix <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/T1.otu.dis.matrix.RDS")
+physical_dist_matrix <- T1_dist_matrix_vinellips
+
+bray_dist_vector <- as.vector(as.dist(bray_dist_matrix))
+physical_dist_vector <- as.vector(as.dist(T1_dist_matrix_vinellips))
+bray_sim_vector <- 1 - bray_dist_vector
+
+cor_test_result <- cor.test(physical_dist_vector, bray_sim_vector)
+model <- lm(bray_sim_vector ~ physical_dist_vector)
+model_summary <- summary(model)
+
+slope <- model_summary$coefficients[2,1]
+p_value <- coef(summary(model))[2,4]
+correlation_coefficient <- cor_test_result$estimate
+
+plot_data <- data.frame(PhysicalDistance = physical_dist_vector, BrayCurtisSimilarity = bray_sim_vector)
+
+ggplot(plot_data, aes(x = physical_dist_vector, y = bray_sim_vector)) +
+  geom_point()+
+  geom_smooth(method = "lm", col = "black") +
+  labs(
+    title = "Distance Decay of Bray-Curtis Similarity, T1",
+    x = "Physical Distance (meters)",
+    y = "Bray-Curtis Similarity",
+  ) +
+  theme_bw() +
+  annotate("text", x = Inf, y = Inf, label = paste0("p-value = ", format(p_value, scientific = TRUE)), hjust = 2, vjust = 2.5, size = 5) + 
+  annotate("text", x = Inf, y = Inf, label = sprintf("slope = %.3e", round(slope, 3)), hjust = 2.4, vjust = 3.7, size = 5) + 
+  annotate("text", x = Inf, y = Inf, label = paste0("r = ", round(correlation_coefficient, 3)), hjust = 4.2, vjust = 4.9, size = 5)
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/ScatterPlot/distance_decay_T1virome.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
+
+# Supplementary Figure 1C - Distance Decay - T2
+# Load Input Data
+```{r}
+blodgett_gps_T2 <- blodgett_gps[(blodgett_gps$Timepoint=="T2"),]
+blodgett_gps_T2 <- blodgett_gps_T2 %>%
+  select(SampleID, longitude, latitude)
+blodgett_gps_T2 <- column_to_rownames(blodgett_gps_T2, var = "SampleID")
+blodgett_gps_T2 <- as.data.frame(blodgett_gps_T2)
+blodgett_gps_T2$longitude <- as.numeric(blodgett_gps_T2$longitude)
+blodgett_gps_T2$latitude <- as.numeric(blodgett_gps_T2$latitude)
+T2_dist_matrix_vinellips <- distm(blodgett_gps_T2, fun = distVincentyEllipsoid)
+rownames(T2_dist_matrix_vinellips) <- colnames(T2_dist_matrix_vinellips) <- rownames(blodgett_gps_T2)
+```
+# Make Scatter Plot
+```{r}
+bray_dist_matrix <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/T2.otu.dis.matrix.RDS")
+physical_dist_matrix <- T2_dist_matrix_vinellips
+
+bray_dist_vector <- as.vector(as.dist(bray_dist_matrix))
+physical_dist_vector <- as.vector(as.dist(T2_dist_matrix_vinellips))
+bray_sim_vector <- 1 - bray_dist_vector
+
+cor_test_result <- cor.test(physical_dist_vector, bray_sim_vector)
+model <- lm(bray_sim_vector ~ physical_dist_vector)
+model_summary <- summary(model)
+
+slope <- model_summary$coefficients[2,1]
+p_value <- coef(summary(model))[2,4]
+correlation_coefficient <- cor_test_result$estimate
+
+plot_data <- data.frame(PhysicalDistance = physical_dist_vector, BrayCurtisSimilarity = bray_sim_vector)
+
+ggplot(plot_data, aes(x = physical_dist_vector, y = bray_sim_vector)) +
+  geom_point()+
+  geom_smooth(method = "lm", col = "black") +
+  labs(
+    title = "Distance Decay of Bray-Curtis Similarity, T2",
+    x = "Physical Distance (meters)",
+    y = "Bray-Curtis Similarity",
+  ) +
+  theme_bw() +
+  annotate("text", x = Inf, y = Inf, label = paste0("p-value = ", format(p_value, scientific = TRUE)), hjust = 2, vjust = 2.5, size = 5) + 
+  annotate("text", x = Inf, y = Inf, label = sprintf("slope = %.3e", round(slope, 3)), hjust = 2.4, vjust = 3.7, size = 5) + 
+  annotate("text", x = Inf, y = Inf, label = paste0("r = ", round(correlation_coefficient, 3)), hjust = 4.2, vjust = 4.9, size = 5)
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/ScatterPlot/distance_decay_T2virome.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
+# Supplementary Figure 1D - Distance Decay - T3
+# Load Input Data
+```{r}
+blodgett_gps_T3 <- blodgett_gps[(blodgett_gps$Timepoint=="T3"),]
+blodgett_gps_T3 <- blodgett_gps_T3 %>%
+  select(SampleID, longitude, latitude)
+blodgett_gps_T3 <- column_to_rownames(blodgett_gps_T3, var = "SampleID")
+blodgett_gps_T3 <- as.data.frame(blodgett_gps_T3)
+blodgett_gps_T3$longitude <- as.numeric(blodgett_gps_T3$longitude)
+blodgett_gps_T3$latitude <- as.numeric(blodgett_gps_T3$latitude)
+T3_dist_matrix_vinellips <- distm(blodgett_gps_T3, fun = distVincentyEllipsoid)
+rownames(T3_dist_matrix_vinellips) <- colnames(T3_dist_matrix_vinellips) <- rownames(blodgett_gps_T3)
+```
+# Make Scatter Plot
+```{r}
+bray_dist_matrix <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/T3.otu.dis.matrix.RDS")
+physical_dist_matrix <- T3_dist_matrix_vinellips
+
+bray_dist_vector <- as.vector(as.dist(bray_dist_matrix))
+physical_dist_vector <- as.vector(as.dist(T3_dist_matrix_vinellips))
+bray_sim_vector <- 1 - bray_dist_vector
+
+cor_test_result <- cor.test(physical_dist_vector, bray_sim_vector)
+model <- lm(bray_sim_vector ~ physical_dist_vector)
+model_summary <- summary(model)
+
+slope <- model_summary$coefficients[2,1]
+p_value <- coef(summary(model))[2,4]
+correlation_coefficient <- cor_test_result$estimate
+
+plot_data <- data.frame(PhysicalDistance = physical_dist_vector, BrayCurtisSimilarity = bray_sim_vector)
+
+ggplot(plot_data, aes(x = physical_dist_vector, y = bray_sim_vector)) +
+  geom_point()+
+  geom_smooth(method = "lm", col = "black") +
+  labs(
+    title = "Distance Decay of Bray-Curtis Similarity, T3",
+    x = "Physical Distance (meters)",
+    y = "Bray-Curtis Similarity",
+  ) +
+  theme_bw() +
+  annotate("text", x = Inf, y = Inf, label = paste0("p-value = ", format(p_value, scientific = TRUE)), hjust = 2, vjust = 2.5, size = 5) + 
+  annotate("text", x = Inf, y = Inf, label = sprintf("slope = %.3e", round(slope, 3)), hjust = 2.4, vjust = 3.7, size = 5) + 
+  annotate("text", x = Inf, y = Inf, label = paste0("r = ", round(correlation_coefficient, 3)), hjust = 4.2, vjust = 4.9, size = 5)
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/ScatterPlot/distance_decay_T3virome.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
+# Supplementary Figure 1E - Distance Decay - T4
+# Load Input Data
+```{r}
+blodgett_gps_T4 <- blodgett_gps[(blodgett_gps$Timepoint=="T4"),]
+blodgett_gps_T4 <- blodgett_gps_T4 %>%
+  select(SampleID, longitude, latitude)
+blodgett_gps_T4 <- column_to_rownames(blodgett_gps_T4, var = "SampleID")
+blodgett_gps_T4 <- as.data.frame(blodgett_gps_T4)
+blodgett_gps_T4$longitude <- as.numeric(blodgett_gps_T4$longitude)
+blodgett_gps_T4$latitude <- as.numeric(blodgett_gps_T4$latitude)
+T4_dist_matrix_vinellips <- distm(blodgett_gps_T4, fun = distVincentyEllipsoid)
+rownames(T4_dist_matrix_vinellips) <- colnames(T4_dist_matrix_vinellips) <- rownames(blodgett_gps_T4)
+```
+# Make Scatter Plot
+```{r}
+bray_dist_matrix <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/T4.otu.dis.matrix.RDS")
+physical_dist_matrix <- T4_dist_matrix_vinellips
+
+bray_dist_vector <- as.vector(as.dist(bray_dist_matrix))
+physical_dist_vector <- as.vector(as.dist(T4_dist_matrix_vinellips))
+bray_sim_vector <- 1 - bray_dist_vector
+
+cor_test_result <- cor.test(physical_dist_vector, bray_sim_vector)
+model <- lm(bray_sim_vector ~ physical_dist_vector)
+model_summary <- summary(model)
+
+slope <- model_summary$coefficients[2,1]
+p_value <- coef(summary(model))[2,4]
+correlation_coefficient <- cor_test_result$estimate
+
+plot_data <- data.frame(PhysicalDistance = physical_dist_vector, BrayCurtisSimilarity = bray_sim_vector)
+
+ggplot(plot_data, aes(x = physical_dist_vector, y = bray_sim_vector)) +
+  geom_point()+
+  geom_smooth(method = "lm", col = "black") +
+  labs(
+    title = "Distance Decay of Bray-Curtis Similarity, T4",
+    x = "Physical Distance (meters)",
+    y = "Bray-Curtis Similarity",
+  ) +
+  theme_bw() +
+  annotate("text", x = Inf, y = Inf, label = paste0("p-value = ", format(p_value, scientific = TRUE)), hjust = 2, vjust = 2.5, size = 5) + 
+  annotate("text", x = Inf, y = Inf, label = sprintf("slope = %.3e", round(slope, 3)), hjust = 2.4, vjust = 3.7, size = 5) + 
+  annotate("text", x = Inf, y = Inf, label = paste0("r = ", round(correlation_coefficient, 3)), hjust = 4.2, vjust = 4.9, size = 5)
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/ScatterPlot/distance_decay_T4virome.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
+
+
+# SUPPLEMENTARY FIGURE 2
+# Supplementary Figure 2A - pH boxplot
+```{r}
+pH <- ggplot(b.metadata, aes(x = Timepoint, y = SoilpH, fill = Treatment)) +
+  annotate('rect', xmin = -Inf, xmax = 2.5, ymin = -Inf, ymax = Inf, fill = 'lightgreen', alpha = 0.5) +
+  geom_boxplot(outlier.shape=NA) +
+  xlab("Timepoint") +
+  ylab("Soil pH") +
+  theme_bw() +
+  geom_jitter(aes(color = Depth), position = position_jitter(), size = 1.5) +
+  theme(axis.title = element_text(size = 16)) +
+  theme(legend.position = "none") +
+  theme(legend.text = element_text(size = 16)) +
+  theme(axis.text = element_text(size = 16)) +
+  theme(axis.text.x = element_text(size = 16)) +
+  scale_fill_manual(name = "Treatment", 
+                    values = treatment_colors) +
+  scale_color_manual(values = depth_colors) +
+  facet_wrap(~ Treatment) + 
+  theme(strip.text = element_text(size=16))
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/SingleEnvironmental/blodgett_pH.pdf", width = 150, height = 100, units = "mm", dpi = 500)
+```
+# Supplementary Figure 2B - Organic Matter boxplot
+```{r}
+OM <- ggplot(b.metadata, aes(x = Timepoint, y = OrganicMatter, fill = Treatment)) +
+  annotate('rect', xmin = -Inf, xmax = 2.5, ymin = -Inf, ymax = Inf, fill = 'lightgreen', alpha = 0.5) +
+  geom_boxplot(outlier.shape=NA) +
+  xlab("Timepoint") +
+  ylab("Organic Matter (% LOI)") +
+  theme_bw() +
+  geom_jitter(aes(color = Depth), position = position_jitter(), size = 1.5) +
+  theme(axis.title = element_text(size = 16)) +
+  theme(legend.position = "none") +
+  theme(legend.text = element_text(size = 16)) +
+  theme(axis.text = element_text(size = 16)) +
+  theme(axis.text.x = element_text(size = 16)) +
+  scale_fill_manual(name = "Treatment", 
+                    values = treatment_colors) +
+  scale_color_manual(values = depth_colors) +
+  facet_wrap(~ Treatment) + 
+  theme(strip.text = element_text(size=16))
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/SingleEnvironmental/blodgett_OM.pdf", width = 150, height = 100, units = "mm", dpi = 500)
+```
+# Supplementary Figure 2C - Inorganic Nitrogen boxplot
+```{r}
+InorganicN <- ggplot(b.metadata, aes(x = Timepoint, y = InorganicNitrogen, fill = Treatment)) +
+  annotate('rect', xmin = -Inf, xmax = 2.5, ymin = -Inf, ymax = Inf, fill = 'lightgreen', alpha = 0.5) +
+  geom_boxplot(outlier.shape=NA) +
+  xlab("Timepoint") +
+  ylab("Inorganic Nitrogen (ppm N)") +
+  theme_bw() +
+  geom_jitter(aes(color = Depth), position = position_jitter(), size = 1.5) +
+  theme(axis.title = element_text(size = 16)) +
+  theme(legend.position = "none") +
+  theme(legend.text = element_text(size = 16)) +
+  theme(axis.text = element_text(size = 16)) +
+  theme(axis.text.x = element_text(size = 16)) +
+  scale_fill_manual(name = "Treatment", 
+                    values = treatment_colors) +
+  scale_color_manual(values = depth_colors) +
+  facet_wrap(~ Treatment) + 
+  theme(strip.text = element_text(size=16))
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/SingleEnvironmental/blodgett_InorganicN.pdf", width = 150, height = 100, units = "mm", dpi = 500)
+```
+# Supplementary Figure 2D - Organic N:Inorganic N boxplot
+```{r}
+ONIN <- ggplot(b.metadata, aes(x = Timepoint, y = OrganicNInorganicN, fill = Treatment)) +
+  annotate('rect', xmin = -Inf, xmax = 2.5, ymin = -Inf, ymax = Inf, fill = 'lightgreen', alpha = 0.5) +
+  geom_boxplot(outlier.shape=NA) +
+  xlab("Timepoint") +
+  ylab("Organic N : Inorganic N") +
+  theme_bw() +
+  geom_jitter(aes(color = Depth), position = position_jitter(), size = 1.5) +
+  theme(axis.title = element_text(size = 16)) +
+  theme(legend.position = "none") +
+  theme(legend.text = element_text(size = 16)) +
+  theme(axis.text = element_text(size = 16)) +
+  theme(axis.text.x = element_text(size = 16)) +
+  scale_fill_manual(name = "Treatment", 
+                    values = treatment_colors) +
+  scale_color_manual(values = depth_colors) +
+  facet_wrap(~ Treatment) + 
+  theme(strip.text = element_text(size=16))
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/SingleEnvironmental/blodgett_ONIN.pdf", width = 150, height = 100, units = "mm", dpi = 500)
+```
+# Supplementary Figure 2E - Inorganic Phosphorus
+```{r}
+InorganicP <- ggplot(b.metadata, aes(x = Timepoint, y = InorganicPhosphorus, fill = Treatment)) +
+  annotate('rect', xmin = -Inf, xmax = 2.5, ymin = -Inf, ymax = Inf, fill = 'lightgreen', alpha = 0.5) +
+  geom_boxplot(outlier.shape=NA) +
+  xlab("Timepoint") +
+  ylab("Inorganic (FIA) Phosphorus (ppm P)") +
+  theme_bw() +
+  geom_jitter(aes(color = Depth), position = position_jitter(), size = 1.5) +
+  theme(axis.title = element_text(size = 16)) +
+  theme(legend.position = "none") +
+  theme(legend.text = element_text(size = 16)) +
+  theme(axis.text = element_text(size = 16)) +
+  theme(axis.text.x = element_text(size = 16)) +
+  scale_fill_manual(name = "Treatment", 
+                    values = treatment_colors) +
+  scale_color_manual(values = depth_colors) +
+  facet_wrap(~ Treatment) + 
+  theme(strip.text = element_text(size=16))
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/SingleEnvironmental/blodgett_InorganicP.pdf", width = 150, height = 100, units = "mm", dpi = 500)
+```
+# Supplementary Figure 2F - Organic Phosphorus
+```{r}
+OrganicP <- ggplot(b.metadata, aes(x = Timepoint, y = OrganicPhosphorus, fill = Treatment)) +
+  annotate('rect', xmin = -Inf, xmax = 2.5, ymin = -Inf, ymax = Inf, fill = 'lightgreen', alpha = 0.5) +
+  geom_boxplot(outlier.shape=NA) +
+  xlab("Timepoint") +
+  ylab("Organic Phosphorus (ppm P)") +
+  theme_bw() +
+  geom_jitter(aes(color = Depth), position = position_jitter(), size = 1.5) +
+  theme(axis.title = element_text(size = 16)) +
+  theme(legend.position = "none") +
+  theme(legend.text = element_text(size = 16)) +
+  theme(axis.text = element_text(size = 16)) +
+  theme(axis.text.x = element_text(size = 16)) +
+  scale_fill_manual(name = "Treatment", 
+                    values = treatment_colors) +
+  scale_color_manual(values = depth_colors) +
+  facet_wrap(~ Treatment) + 
+  theme(strip.text = element_text(size=16))
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/SingleEnvironmental/blodgett_OrganicP.pdf", width = 150, height = 100, units = "mm", dpi = 500)
+```
+# Supplementary Figure 2G - Calcium
+```{r}
+Calcium <- ggplot(b.metadata, aes(x = Timepoint, y = Calcium, fill = Treatment)) +
+  annotate('rect', xmin = -Inf, xmax = 2.5, ymin = -Inf, ymax = Inf, fill = 'lightgreen', alpha = 0.5) +
+  geom_boxplot(outlier.shape=NA) +
+  xlab("Timepoint") +
+  ylab("ICAP Calcium (ppm Ca)") +
+  theme_bw() +
+  geom_jitter(aes(color = Depth), position = position_jitter(), size = 1.5) +
+  theme(axis.title = element_text(size = 16)) +
+  theme(legend.position = "none") +
+  theme(legend.text = element_text(size = 16)) +
+  theme(axis.text = element_text(size = 16)) +
+  theme(axis.text.x = element_text(size = 16)) +
+  scale_fill_manual(name = "Treatment", 
+                    values = treatment_colors) +
+  scale_color_manual(values = depth_colors) +
+  facet_wrap(~ Treatment) + 
+  theme(strip.text = element_text(size=16))
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/SingleEnvironmental/blodgett_Calcium.pdf", width = 150, height = 100, units = "mm", dpi = 500)
+```
+# Supplementary Figure 2H - Magnesium
+```{r}
+Magnesium <- ggplot(b.metadata, aes(x = Timepoint, y = Magnesium, fill = Treatment)) +
+  annotate('rect', xmin = -Inf, xmax = 2.5, ymin = -Inf, ymax = Inf, fill = 'lightgreen', alpha = 0.5) +
+  geom_boxplot(outlier.shape=NA) +
+  xlab("Timepoint") +
+  ylab("ICAP Magnesium (ppm Mg)") +
+  theme_bw() +
+  geom_jitter(aes(color = Depth), position = position_jitter(), size = 1.5) +
+  theme(axis.title = element_text(size = 16)) +
+  theme(legend.position = "none") +
+  theme(legend.text = element_text(size = 16)) +
+  theme(axis.text = element_text(size = 16)) +
+  theme(axis.text.x = element_text(size = 16)) +
+  scale_fill_manual(name = "Treatment", 
+                    values = treatment_colors) +
+  scale_color_manual(values = depth_colors) +
+  facet_wrap(~ Treatment) + 
+  theme(strip.text = element_text(size=16))
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/SingleEnvironmental/blodgett_Magnesium.pdf", width = 150, height = 100, units = "mm", dpi = 500)
+```
+# Supplementary Figure 2I - Potassium
+```{r}
+Potassium <- ggplot(b.metadata, aes(x = Timepoint, y = Potassium, fill = Treatment)) +
+  annotate('rect', xmin = -Inf, xmax = 2.5, ymin = -Inf, ymax = Inf, fill = 'lightgreen', alpha = 0.5) +
+  geom_boxplot(outlier.shape=NA) +
+  xlab("Timepoint") +
+  ylab("ICAP Potassium (ppm K)") +
+  theme_bw() +
+  geom_jitter(aes(color = Depth), position = position_jitter(), size = 1.5) +
+  theme(axis.title = element_text(size = 16)) +
+  theme(legend.position = "none") +
+  theme(legend.text = element_text(size = 16)) +
+  theme(axis.text = element_text(size = 16)) +
+  theme(axis.text.x = element_text(size = 16)) +
+  scale_fill_manual(name = "Treatment", 
+                    values = treatment_colors) +
+  scale_color_manual(values = depth_colors) +
+  facet_wrap(~ Treatment) + 
+  theme(strip.text = element_text(size=16))
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/SingleEnvironmental/blodgett_Potassium.pdf", width = 150, height = 100, units = "mm", dpi = 500)
+```
+# Supplementary Figure 2J - Loadings of Variables on PC1
+```{r}
+pc1_loadings <- as.data.frame(d_pca_fit$loadings[, 1])
+colnames(pc1_loadings) <- c("Loadings")
+pc1_loadings$Variables <- rownames(pc1_loadings)
+
+chem_order <- c("Potassium", "Magnesium", "Calcium", "OrganicPhosphorus", "InorganicPhosphorus", "OrganicNInorganicN", "InorganicNitrogen", "OrganicMatter", "SoilpH", "Moisture")
+
+pc1_loadings$Variables <- factor(pc1_loadings$Variables, levels = chem_order)
+pc1_loadings$Loadings <- -pc1_loadings$Loadings
+pc1_loadings <- pc1_loadings %>%
+  mutate(Variable_Group = case_when(
+    Variables == "Moisture" ~ "Moisture",
+    Variables == "SoilpH" ~ "SoilpH",
+    Variables == "OrganicMatter" ~ "OrganicMatter",
+    Variables == "InorganicNitrogen" ~ "Nitrogen",
+    Variables == "OrganicNInorganicN" ~ "Nitrogen",
+    Variables == "InorganicPhosphorus" ~ "Phosphorus",
+    Variables == "OrganicPhosphorus" ~ "Phosphorus",
+    Variables == "Calcium" ~ "Micronutrients", 
+    Variables == "Magnesium" ~ "Micronutrients",
+    Variables == "Potassium" ~ "Micronutrients"))
+
+Variable_Group_Colors <- c("Moisture" = "blue", "SoilpH" = "purple", "OrganicMatter" = "brown", "Nitrogen" = "gold", "Phosphorus" = "limegreen", "Micronutrients" = "orange")
+
+
+# Plot the loadings for PC1
+ggplot(pc1_loadings, aes(x = Variables, y = Loadings, fill = Variable_Group)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  theme(legend.position = "none") +
+  labs(title = "Loadings of Variables on PC1",
+       x = "Variables",
+       y = "Loadings") +
+  scale_fill_manual(values = Variable_Group_Colors)
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/PCA/PC1_reduced_loadings.pdf", width = 200, height = 125, units = "mm", dpi = 500)
+```
+
+
+# SUPPLEMENTARY FIGURE 3
+# Supplementary Figure 3A - Plot Temperatures
+# Load Input Data
+```{r}
+all_temp <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/all_temp.RDS")
+```
+# Make line graphs
+```{r}
+max_temp <- all_temp %>%
+  group_by(Depth, Plot) %>%
+  dplyr::summarize(max_temp = max(Temperature), .groups = 'drop')
+
+all_temp_max <- all_temp %>%
+  left_join(max_temp, by = c("Depth", "Plot"))
+
+all_temperature <- ggplot(all_temp_max, aes(x = DateTime, y = Temperature, color = Plot, linetype = group)) +
+  geom_line(linewidth = 0.75) +
+  theme_bw() +
+  labs(x="One Minute Intervals",
+       y="Temperature(ºC)",
+       title = "Plot temperature over time") +
+  scale_color_manual(values = temp_plot_colors, limits = temp_plot_order)+
+  scale_linetype_manual(values = c("dashed", "solid")) +
+  facet_wrap(~ Depth)
+
+all_temperature <- ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/LineGraph/BurnTemperature.pdf", width = 250, height = 150, units = "mm", dpi = 500)
+```
+# Supplementary Figure 3B - Difference in Burn Severity Between Depths
+# Load Input Data
+```{r}
+d_pc1
+d.metadata <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/d.metadata.RDS")
+# create a dataframe that has ID, depth, PC1 scores, SubPlot, and Date, and if missing - basically combine the above two
+d_profile <- d.metadata %>%
+  select(SampleID, Depth, SubPlot, Date) %>%
+  rename(ID = SampleID)
+d_profile <- left_join(d_profile, d_pc1, by = "ID")
+depth_diff <- d_profile %>%
+  pivot_wider(names_from = Depth, values_from = Comp.1)
+depth_diff <- depth_diff %>%
+  select(!ID) %>%
+  select(!Missing)
+depth_diff <- depth_diff %>%
+  group_by(SubPlot, Date) %>%
+  summarise(
+    `3-6cm` = max(`3-6cm`, na.rm = TRUE),
+    `0-3cm` = max(`0-3cm`, na.rm = TRUE),
+    .groups = 'drop'
+  )
+depth_diff <- depth_diff %>%
+  mutate(diff = `0-3cm` - `3-6cm`) %>%
+  mutate(Timepoint = case_when(
+    Date == "4/27/2021" ~ "T3", 
+    Date == "5/8/2021" ~ "T4", 
+    Date == "6/20/2021" ~ "T5")) %>%
+  mutate(SubPlotDate = paste(SubPlot, "-", Timepoint))
+```
+# Plot bar graph
+```{r}
+SubPlot_Colors <- c("B1A" = "chocolate2", "B1B" = "chocolate2", "B2A" = "burlywood", "B2B" = "burlywood", "B3A" =  "darkorange4", "B3B" = "darkorange4", "B4A" = "tomato3", "B4B" =  "tomato3")
+
+ggplot(depth_diff, aes(x = SubPlotDate, y = diff, fill = SubPlot)) +
+  geom_bar(stat = "identity") +
+  theme_bw() +
+  labs(x = "SubPlot", y = "Difference (0-3cm - 3-6cm)", title = "Difference in Burn Severity Between Depths") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_manual(values = SubPlot_Colors)
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BarGraph/Burnseverity_depth.pdf", width = 250, height = 150, units = "mm", dpi = 500)
+```
+# Supplementary Figure 3C - Pairwise Virome Dissimilarity for Depth by Interaction of Treatment and Timepoint
+# Load Input Data
+```{r}
+dissimilarity_results <- data.frame()
+for (subplot in unique(p.map$SubPlot)) {
+  for (timepoint in unique(p.map$Timepoint)) {
+    samples <- p.map$ID[p.map$SubPlot == subplot & p.map$Timepoint == timepoint]
+    depths <- p.map$Depth[p.map$SubPlot == subplot & p.map$Timepoint == timepoint]
+    if (length(samples) == 2 && length(unique(depths)) == 2) {
+      bc_dissim <- p.otu.dis.matrix[samples[1], samples[2]]
+      dissimilarity_results <- rbind(dissimilarity_results, data.frame(
+        SubPlot = subplot,
+        TimePoint = timepoint,
+        Treatment = p.map$Treatment[p.map$SubPlot == subplot][1],
+        BrayCurtis = bc_dissim))}}}
+
+dissimilarity_results$FireStatus <- ifelse(dissimilarity_results$TimePoint %in% c("T1", "T2"), "Before", "After")
+interaction.order <- c("Control.Before", "Control.After", "Burn.Before", "Burn.After")
+dissimilarity_results$InteractionOrder <- factor(interaction(dissimilarity_results$Treatment, dissimilarity_results$FireStatus), levels = interaction.order)
+```
+# Make Depth-Dissimilarity Difference Box Plot
+```{r}
+ggplot(dissimilarity_results, aes(x = InteractionOrder, y = BrayCurtis, fill = interaction(Treatment, FireStatus))) +
+  geom_boxplot() +
+  geom_point() +
+  labs(
+    x = "Treatment and Fire Status",
+    y = "Bray-Curtis Dissimilarity", 
+    title = "Pairwise Bray-Curtis Dissimilarity Between Depths") +
+  scale_fill_manual(values = c("Burn.Before" = "mediumaquamarine", "Burn.After" = "maroon", "Control.Before" = "mediumaquamarine", "Control.After" = "mediumaquamarine")) +
+  theme_minimal()
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/BoxPlots/BC_depth.pdf", width = 250, height = 150, units = "mm", dpi = 500)
+```
+# Statistics
+```{r}
+kruskal_results <- kruskal.test(BrayCurtis ~ interaction(Treatment, FireStatus), data = dissimilarity_results)
+```
+
+
+
+# SUPPLEMENTARY FIGURE 4
+# Supplementary Figure 4A - 0−3cm, Prescribed Burn 16S rRNA gene ASV Profile (all samples)
+# Load Input Data
+```{r}
+s_map <- subset(p_map, Depth=="0-3cm")
+s.asv <- p.asv[,p_map$Depth=="0-3cm"] %>%
+  rmv_sngl()
+
+#check if samples are identical
+identical(colnames(s.asv), s_map$ID)
+
+#s.asv.rarecurve <- rarecurve(t(s.asv), step = 100)
+#x <- map_dfr(s.asv.rarecurve, bind_rows) %>% bind_cols(colnames(s.asv),.)
+#x <- as.data.frame(x)
+#row.names(x) <- x[, 1]
+
+s.asv.rare <- t(rrarefy(t(s.asv), sample = 18200))
+s.asv.rare <- data.frame(s.asv.rare) %>%
+  rmv_sngl()
+# Join taxonomy and abundance data together
+# first, add OTU_ID back as a column
+s.id.asv <- s.asv.rare
+s.id.asv$OTU_ID <- rownames(s.id.asv)
+tax_s <- left_join(s.id.asv, tax_filtered, by = "OTU_ID")
+# make sure blodgett.asv is in the same order as tax_blodgett (return = TRUE)
+check_column <- "OTU_ID"
+all(s.id.asv[[check_column]] == tax_s[[check_column]])
+unique(tax_s$Phylum)
+# pivot table and group by Phylum
+tax_s.long <- pivot_longer(tax_s, cols=1:55, names_to = "ID", values_to = "counts")
+s.phylum.long <- group_by(tax_s.long, Phylum, ID) %>%
+  summarize(counts=sum(counts))
+
+# rarefied to 18,200
+# collapse phyla into "other" category if represents less than 2%, which is 364
+s.phylum.long$Phylum <- as.character(s.phylum.long$Phylum)
+s.phylum.long <- s.phylum.long %>%
+  group_by(Phylum) %>%
+  mutate(NewPhylum = ifelse(all(counts < 364), 'Other', Phylum)) %>%
+  ungroup()
+
+unique(s.phylum.long$NewPhylum)
+```
+# Make Stacked Bar Chart
+```{r}
+# Prep data frame for plotting
+s.phylum.map <- merge(s.phylum.long, s_map, by="ID")
+# Arrange samples in correct timepoint order
+s.phylum.map <- s.phylum.map %>%
+  arrange(TimePoint)
+
+# Plot 
+s_phylum <- ggplot(s.phylum.map, aes(x=SubPlot, y=counts, fill=factor(NewPhylum, level=collapsed_phyla_order)))+
+    labs(x="Sample", 
+       y ="Relative Abundance",
+       title = "0-3cm, Prescribed Burn 16S rRNA ASV Profile")+
+  annotate('rect', xmin = 8.5, xmax = 12.5, ymin = -Inf, ymax = Inf, fill = 'lightgray', alpha = 0.75) +
+  geom_bar(stat="identity", position = "fill", width = 0.75)+
+  scale_fill_manual(values=collapsed_phylum_colors) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5),
+        legend.position = "none") +
+  facet_wrap(~ TimePoint, ncol = 5)
+
+s_phylum
+
+s_phylum <- ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/StackedBar/ASVPhylum/s_phylum.pdf", width = 250, height = 80, units = "mm", dpi = 500)
+```
+# Supplementary Figure 4B - 3−6cm, Prescribed Burn 16S rRNA gene ASV Profile (all samples)
+# Load Input Data
+```{r}
+d_map <- subset(p_map, Depth=="3-6cm")
+d.asv <- p.asv[,p_map$Depth=="3-6cm"] %>%
+  rmv_sngl()
+
+#check if samples are identical
+identical(colnames(d.asv), d_map$ID)
+
+#d.asv.rarecurve <- rarecurve(t(d.asv), step = 100)
+#x <- map_dfr(d.asv.rarecurve, bind_rows) %>% bind_cols(colnames(d.asv),.)
+#x <- as.data.frame(x)
+#row.names(x) <- x[, 1]
+
+d.asv.rare <- t(rrarefy(t(d.asv), sample = 20000))
+d.asv.rare <- data.frame(d.asv.rare) %>%
+  rmv_sngl()
+
+# Join taxonomy and abundance data together
+# first, add OTU_ID back as a column
+d.id.asv <- d.asv.rare
+d.id.asv$OTU_ID <- rownames(d.id.asv)
+tax_d <- left_join(d.id.asv, tax_filtered, by = "OTU_ID")
+# make sure blodgett.asv is in the same order as tax_blodgett (return = TRUE)
+check_column <- "OTU_ID"
+all(d.id.asv[[check_column]] == tax_d[[check_column]])
+unique(tax_d$Phylum)
+# pivot table and group by Phylum
+tax_d.long <- pivot_longer(tax_d, cols=1:59, names_to = "ID", values_to = "counts")
+d.phylum.long <- group_by(tax_d.long, Phylum, ID) %>%
+  summarize(counts=sum(counts))
+
+# rarefied to 20000
+# collapse phyla into "other" category if represents less than 2%, which is 400
+d.phylum.long$Phylum <- as.character(d.phylum.long$Phylum)
+d.phylum.long <- d.phylum.long %>%
+  group_by(Phylum) %>%
+  mutate(NewPhylum = ifelse(all(counts < 400), 'Other', Phylum)) %>%
+  ungroup()
+
+unique(d.phylum.long$NewPhylum)
+```
+# Make Stacked Bar Chart
+```{r}
+# Prep data frame for plotting
+d.phylum.map <- merge(d.phylum.long, d_map, by="ID")
+# Arrange samples in correct timepoint order
+d.phylum.map <- d.phylum.map %>%
+  arrange(TimePoint)
+
+# Plot
+d_phylum <- ggplot(d.phylum.map, aes(x=SubPlot, y=counts, fill=factor(NewPhylum, level=collapsed_phyla_order)))+
+    labs(x="Sample", 
+       y ="Relative Abundance",
+       title = "3-6cm, Prescribed Burn 16S rRNA ASV Profile")+
+  annotate('rect', xmin = 8.5, xmax = 12.5, ymin = -Inf, ymax = Inf, fill = 'lightgray', alpha = 0.75) +
+  geom_bar(stat="identity", position = "fill", width = 0.75)+
+  scale_fill_manual(values=collapsed_phylum_colors) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5),
+        legend.position = "none") +
+  facet_wrap(~ TimePoint, ncol = 5)
+d_phylum
+d_phylum <- ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/StackedBar/ASVPhylum/d_phylum.pdf", width = 250, height = 80, units = "mm", dpi = 500)
+```
+# Supplementary Figure 4C - Correlation b/t microbiome and chemical properties
+# Load packages
+```{r}
+library(Hmisc)
+library(pheatmap)
+library(RColorBrewer)
+```
+# Load Input Data
+```{r}
+p.phylum.long <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/p.phylum.long.RDS")
+p.phylum.long=p.phylum.long%>%
+  select(-NewPhylum)
+microbiome_data <- p.phylum.long %>%
+  pivot_wider(names_from = Phylum, values_from = counts, values_fill = list(counts = 0))
+microbiome_data <- as.data.frame(microbiome_data)
+p_map <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/p_map.RDS")
+  
+chemical_data <- b.chem.ID
+chemical_data <- chemical_data %>%
+  mutate(SampleID = gsub("V", "M", SampleID)) %>%
+  mutate(SampleID = ifelse(SampleID == "UDM24D", "UDM24", SampleID))
+colnames(chemical_data)[colnames(chemical_data) == "SampleID"] <- "MapID"
+chemical_data = left_join(p_map, chemical_data, by="MapID")
+chemical_data <- chemical_data[, -c(2:13)]
+
+# Check that the dataframes have the same row names
+identical(chemical_data$ID, microbiome_data$ID)
+
+# Remove ID columns
+microbiome_data <- microbiome_data %>% select(-ID)
+microbiome_data <- microbiome_data %>%
+  select(Acidobacteriota, Actinobacteriota, Bacteroidota, Chloroflexota, Cyanobacteria, Firmicutes, Gemmatimonadota, Myxococcota, Nitrospirota, Planctomycetota, Proteobacteria, Verrucomicrobiota)
+chemical_data <- chemical_data %>% select(-ID)
+chemical_data <- chemical_data %>%
+  select(Moisture, SoilpH, OrganicMatter, InorganicNitrogen, OrganicNInorganicN, InorganicPhosphorus, OrganicPhosphorus, Calcium, Magnesium, Potassium)
+
+# Compute the correlation matrix
+cor_matrix <- rcorr(as.matrix(microbiome_data), as.matrix(chemical_data))
+cor_values <- cor_matrix$r
+cor_pvalues <- cor_matrix$P
+microbiome_indices <- c(1:12)
+chemical_indices <- c(13:22)
+cor_values_subset <- cor_values[microbiome_indices, chemical_indices]
+cor_pvalues_subset <- cor_pvalues[microbiome_indices, chemical_indices]
+sig_matrix <- ifelse(cor_pvalues_subset < 0.05, "*", "")
+
+# Create a combined data frame with correlations and p-values
+cor_values[is.na(cor_values_subset)] <- 0  # Replace NA correlations with 0 for visualization
+```
+# Make Heatmap
+```{r}
+p <- pheatmap(cor_values_subset,
+   clustering_distance_rows = "euclidean",
+   clustering_distance_cols = "euclidean",
+   clustering_method = "complete",
+   main = "Correlation Heatmap of Microbiome and Chemical Properties",
+   color = colorRampPalette(rev(brewer.pal(n = 7, name = "RdYlBu")))(100),
+  display_numbers = sig_matrix, number_size = 24)
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/HeatMap_Dendrogram/microbiome_correlation_heatmap.pdf",
+       plot = p$gtable, width = 10, height = 8)
+```
+# Supplementary Figure 4D - Correlation b/t virome (host prediction) and chemical properties
+# Load Input Data
+```{r}
+p.otu.phylum.map <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/p.otu.phylum.map.rds")
+virome_data=p.otu.phylum.map%>%
+  select(ID, HostPhylum, RelAbd)
+virome_data <- virome_data %>%
+  pivot_wider(names_from = HostPhylum, values_from = RelAbd)
+virome_data <- as.data.frame(virome_data)
+
+p.map <- readRDS("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/rds/p.map.RDS")
+  
+chemical_data <- b.chem.ID
+colnames(chemical_data)[colnames(chemical_data) == "SampleID"] <- "ID"
+chemical_data = left_join(p.map, chemical_data, by="ID")
+chemical_data <- chemical_data[, -c(2:13)]
+
+# Check that the dataframes have the same row names
+identical(chemical_data$ID, virome_data$ID)
+
+# Remove ID columns
+virome_data <- virome_data %>% select(-ID)
+virome_data <- virome_data %>%
+  select(Acidobacteriota, Actinobacteriota, Bacteroidota, Chloroflexota, Cyanobacteria, Firmicutes, Gemmatimonadota, Myxococcota, Nitrospirota, Planctomycetota, Proteobacteria, Verrucomicrobiota)
+chemical_data <- chemical_data %>% select(-ID)
+chemical_data <- chemical_data %>%
+  select(Moisture, SoilpH, OrganicMatter, InorganicNitrogen, OrganicNInorganicN, InorganicPhosphorus, OrganicPhosphorus, Calcium, Magnesium, Potassium)
+
+# Compute the correlation matrix
+cor_matrix <- rcorr(as.matrix(virome_data), as.matrix(chemical_data))
+cor_values <- cor_matrix$r
+cor_pvalues <- cor_matrix$P
+
+virome_indices <- c(1:12)
+chemical_indices <- c(13:22)
+cor_values_subset <- cor_values[virome_indices, chemical_indices]
+cor_pvalues_subset <- cor_pvalues[virome_indices, chemical_indices]
+sig_matrix <- ifelse(cor_pvalues_subset < 0.05, "*", "")
+
+# Create a combined data frame with correlations and p-values
+cor_values[is.na(cor_values_subset)] <- 0  # Replace NA correlations with 0 for visualization
+```
+# Make Heatmap
+```{r}
+v <- pheatmap(cor_values_subset,
+   clustering_distance_rows = "euclidean",
+   clustering_distance_cols = "euclidean",
+   clustering_method = "complete",
+   main = "Correlation Heatmap of Virome Host Prediction and Chemical Properties",
+   color = colorRampPalette(rev(brewer.pal(n = 7, name = "RdYlBu")))(100),
+  display_numbers = sig_matrix, number_size = 24)
+
+ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/HeatMap_Dendrogram/virome_correlation_heatmap.pdf",
+       plot = v$gtable, width = 10, height = 8)
+```
+# Supplementary Figure 4E - vOTU Host Prediction by Sample (all samples)
+# Load Input Data
+```{r}
+# name row.names of p.otu.rel
+p.otu.rel.otu <- p.otu.rel %>%
+  rownames_to_column(var = "OTU")
+p.otu.rel.phylum <- merge(iphop.phylum, p.otu.rel.otu, by = "OTU", all.y = TRUE)
+
+# replace NA Host Phylum with "unknown"
+p.otu.rel.phylum <- p.otu.rel.phylum %>% mutate(HostPhylum = ifelse(is.na(HostPhylum), "Unknown", HostPhylum))
+# remove OTU column (maybe not)
+p.otu.rel.phylum <- p.otu.rel.phylum %>% select(-OTU) 
+p.otu.phylum.long <- pivot_longer(p.otu.rel.phylum, cols=2:92, names_to = "ID", values_to = "RelAbd")
+p.otu.phylum.stack <- group_by(p.otu.phylum.long, HostPhylum, ID) %>%
+  dplyr::summarize(RelAbd=sum(RelAbd))
+p.otu.phylum.stack <- p.otu.phylum.stack %>%
+  group_by(HostPhylum) %>%
+  mutate(NewHostPhylum = ifelse(all(RelAbd < 0.003), 'Other', HostPhylum)) %>%
+  ungroup()
+
+# Prep data frame for plotting
+p.otu.phylum.map <- merge(p.otu.phylum.stack, p.map, by="ID")
+p.otu.phylum.map <- p.otu.phylum.map[p.otu.phylum.map$NewHostPhylum != "Unknown", ]
+
+p.otu.phylum.map <- p.otu.phylum.map %>% 
+  mutate(Order = case_when(
+    Date == "4/5/2021" ~ "T1",
+    Date == "4/18/2021" ~ "T2", 
+    Date == "4/27/2021" ~ "T3", 
+    Date == "5/8/2021" ~ "T4")) %>%
+  mutate(depth = case_when(
+    Depth == "0-3cm" ~ " 0-3",
+    Depth == "3-6cm" ~ " 3-6")) %>%
+  arrange(Order) %>%
+  mutate(SubPlotdepth = paste(SubPlot, depth)) %>%
+  arrange(SubPlotdepth)
+
+unique(p.otu.phylum.map$NewHostPhylum)
+```
+# Make Stacked Bar Plot
+```{r}
+hostphylum <- ggplot(p.otu.phylum.map, aes(x=SubPlotdepth, y=RelAbd, fill=NewHostPhylum))+
+    labs(x="Sample ID", 
+       y ="Relative Abundance",
+       title = "Prescribed Burn vOTU Host Prediction by Sample")+
+  annotate('rect', xmin = 16.5, xmax = 24.5, ymin = -Inf, ymax = Inf, fill = 'lightgray', alpha = 0.5) +
+  #annotate('rect', xmin = 40.5, xmax = 48.5, ymin = -Inf, ymax = Inf, fill = 'lightgray', alpha = 0.5) +
+  #annotate('rect', xmin = 63.5, xmax = 71.5, ymin = -Inf, ymax = Inf, fill = 'lightgray', alpha = 0.5) +
+  #annotate('rect', xmin = 83.5, xmax = Inf, ymin = -Inf, ymax = Inf, fill = 'lightgray', alpha = 0.5) +
+  geom_bar(stat="identity")+
+  scale_fill_manual(name = "Host Phylum",
+                    values=collapsed_phylum_colors) +
+  theme_bw() +
+  #geom_vline(xintercept = c(24.5, 48.5, 71.5), linetype = "solid", color = "black", size = 0.75)+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5), legend.position = "bottom")+
+  facet_wrap(~ Order, ncol = 4)
+
+hostphylum <- ggsave("C:/Users/segeo/Box Sync/EmersonLab/Research/Ch2Blodgett/R_Figures/pdf/StackedBar/2021hostblodgett_phylum.pdf", width = 300, height = 150, units = "mm", dpi = 500)
+```
